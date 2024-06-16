@@ -1,8 +1,22 @@
-mod nbs_class;
-use nbs_class::NoteBlockSong;
+mod fields;
+use fields::{NoteBlockSongHeader, NoteBlockSongNote, NoteBlockSongLayer, NoteBlockSongInstrument};
 
-pub fn read(file: &str) -> Result<NoteBlockSong, io::Error> {todo!()}
+pub struct NoteBlockSong {
+    header: NoteBlockSongHeader,
 
-pub fn save(nbs: NoteBlockSong, version: u8) -> Result<(), io::Error> {todo!()}
+    notes: Vec<NoteBlockSongNote>,
+    
+    layers: Vec<NoteBlockSongLayer>,
+    
+    instrument_count: i16,
+    instruments: Vec<NoteBlockSongInstrument>
+}
+
+mod read;
+use read::read_nbs;
+
+mod write;
+
+pub fn read(file: &str) -> Result<NoteBlockSong, std::io::Error> {todo!()}
 
 pub fn new(name: &str) -> NoteBlockSong {todo!()}

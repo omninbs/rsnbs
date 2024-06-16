@@ -1,20 +1,9 @@
 extern crate paste;
 
-pub struct NoteBlockSong {
-    header: NoteBlockSongHeader,
-
-    notes: Vec<NoteBlockSongNote>,
-    
-    layers: Vec<NoteBlockSongLayer>,
-    
-    instrument_count: i16,
-    instruments: Vec<NoteBlockSongInstrument>
-}
-
 macro_rules! create_iterable_struct {
     ($struct_name:ident, [$(($field:ident, $type:ty, $version:expr)),*]) => {
         // Define the struct
-        struct $struct_name {
+        pub struct $struct_name {
             $(
                 $field: Option<$type>,
             )*
