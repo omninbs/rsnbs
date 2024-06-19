@@ -48,6 +48,7 @@ macro_rules! create_iterable_struct {
 create_iterable_struct!(
     Header,
     [
+        (classic_length: i16: Short): 0,
         (version: i8: Byte): 1,
         (default_instruments: i8: Byte): 1,
         (song_length: i16: Short): 3,
@@ -90,7 +91,6 @@ create_iterable_struct!(
 create_iterable_struct!(
     Layer,
     [
-        (id: i16: Short): 127, // don't read/write only set as struct property
         (name: String: String): 0,
         (lock: bool: Bool): 4,
         (volume: i8: Byte): 0,
@@ -101,7 +101,6 @@ create_iterable_struct!(
 create_iterable_struct!(
     Instrument,
     [
-        (id: i16: Short): 127,
         (name: String: String): 0,
         (file: String: String): 0,
         (pitch: i8: Byte): 0,
