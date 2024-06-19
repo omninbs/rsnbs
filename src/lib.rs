@@ -1,22 +1,35 @@
 mod fields;
-use fields::{NoteBlockSongHeader, NoteBlockSongNote, NoteBlockSongLayer, NoteBlockSongInstrument};
+use fields::{Header, Note, Layer, Instrument, Binary};
 
-pub struct NoteBlockSong {
-    header: NoteBlockSongHeader,
+pub struct Song {
+    header: Header,
 
-    notes: Vec<NoteBlockSongNote>,
+    notes: Vec<Note>,
     
-    layers: Vec<NoteBlockSongLayer>,
+    layers: Vec<Layer>,
     
-    instrument_count: i16,
-    instruments: Vec<NoteBlockSongInstrument>
+    instruments: Vec<Instrument>
 }
 
-mod read;
-use read::read_nbs;
+pub mod parser;
+pub use parser::read_nbs;
 
-mod write;
+mod tests;
 
-pub fn read(file: &str) -> Result<NoteBlockSong, std::io::Error> {todo!()}
+mod writer;
 
-pub fn new(name: &str) -> NoteBlockSong {todo!()}
+pub fn read(file: &str) -> Result<Song, std::io::Error> {return read_nbs(file)}
+
+impl Default for Song {
+    fn default() -> Self {
+        return Song {
+            header: Header::default(),
+            notes: vec!(),
+            layers: vec!(Layer {
+                id: Some(0), name: Some(String::new()),
+                lock: Some(false), volume: Some(1), stereo: Some(0)
+            }),
+            instruments: vec!()
+        }
+    }
+}

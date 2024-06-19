@@ -1,5 +1,5 @@
-use super::NoteBlockSong;
+use super::{Song, Binary};
 
-impl NoteBlockSong {
+impl Song {
     fn save(&self, file: &str, version: u8) -> Result<(), std::io::Error> {todo!()}
 }
