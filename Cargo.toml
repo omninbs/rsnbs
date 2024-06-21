@@ -1,9 +1,17 @@
 [package]
 name = "rsnbs"
 version = "0.1.0"
+authors = ["Joppe Stuyck <joppe@stuyck.be>"]
 edition = "2021"
+description = "IO functionality for the OpenNBS .nbs format"
+license = "MIT"
+repository = "https://github.com/omninbs/rsnbs"
+readme = "README.md"
+keywords = ["nbs", "music", "minecraft", "file-format"]
+categories = ["file-format", "audio", "games"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 paste = "1.0"
+byteorder = "1.4"
