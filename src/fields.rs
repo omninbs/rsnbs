@@ -1,12 +1,21 @@
 extern crate paste;
 
-pub enum Binary<'a> {
+pub enum BinaryMut<'a> {
     Bool(&'a mut Option<bool>),
     Byte(&'a mut Option<i8>),
     UByte(&'a mut Option<u8>),
     Short(&'a mut Option<i16>),
     Integer(&'a mut Option<i32>),
     String(&'a mut Option<String>)
+}
+
+pub enum Binary<'b> {
+    Bool(&'b Option<bool>),
+    Byte(&'b Option<i8>),
+    UByte(&'b Option<u8>),
+    Short(&'b Option<i16>),
+    Integer(&'b Option<i32>),
+    String(&'b Option<String>)
 }
 
 macro_rules! create_iterable_struct {
@@ -22,10 +31,17 @@ macro_rules! create_iterable_struct {
         // Implement the iterator function for the struct
         impl $struct_name {
             paste::item! {
-                pub fn as_mut_vec(&mut self) -> Vec<(Binary, u8)> {
+                pub fn as_mut_vec(&mut self) -> Vec<(BinaryMut, u8)> {
                     vec![
                         $(
-                            (Binary::$enum(&mut self.$field), $version),
+                            (BinaryMut::$enum(&mut self.$field), $version),
+                        )*
+                    ]
+                }
+                pub fn as_ref_vec(&self) -> Vec<(Binary, u8)> {
+                    vec![
+                        $(
+                            (Binary::$enum(&self.$field), $version),
                         )*
                     ]
                 }

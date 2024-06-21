@@ -55,6 +55,14 @@ fn write_field<T: writable_bin>(file: File, field: Option<T>) -> Option<()> {
     return Some(())
 }
 
+fn write_part(part: Vec<(Binary, u8)>) { todo!()
+}
+
 impl Song {
-    fn save(&self, file: &str, version: u8) -> Option<()> {todo!()}
+    fn save(&self, file: &str, version: u8) -> Option<()> {
+        
+        
+
+        return Some(())
+    }
 }

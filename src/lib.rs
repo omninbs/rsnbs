@@ -1,5 +1,5 @@
 mod fields;
-use fields::{Header, Note, Layer, Instrument, Binary};
+use fields::{Header, Note, Layer, Instrument, Binary, BinaryMut};
 
 pub struct Song {
     header: Header,

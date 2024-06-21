@@ -1,4 +1,4 @@
-use super::{Song, Binary, Layer, Header, Note, Instrument};
+use super::{Song, BinaryMut, Layer, Header, Note, Instrument};
 use std::fs::File;
 use std::io::Read;
 
@@ -30,17 +30,18 @@ fn read_string(mut file: File) -> Option<String> {
     return Some(String::from_utf8(string).ok()?)
 }
 
-fn read_binary(file: File, binary: Binary) -> Option<()> {
+fn read_binary(file: File, binary: BinaryMut) -> Option<()> {
     match binary {
-        Binary::Bool(bool) => {*bool = Some(match read_bytes(file.try_clone().ok()?, 1)?[0] {1 => true, 0 => false, _ => false});},            Binary::Byte(byte) => {*byte = Some(read_bytes(file.try_clone().ok()?, 1)?[0] as i8);},
-        Binary::UByte(ubyte) => {*ubyte = Some(read_bytes(file.try_clone().ok()?, 1)?[0]);},
-        Binary::Short(short) => {*short = Some(i16::from_bytes(read_bytes(file.try_clone().ok()?, 2)?));},
-        Binary::Integer(integer) => {*integer = Some(i32::from_bytes(read_bytes(file.try_clone().ok()?, 4)?));},
-        Binary::String(string) => {*string = read_string(file.try_clone().ok()?);}
+        BinaryMut::Bool(bool) => {*bool = Some(match read_bytes(file.try_clone().ok()?, 1)?[0] {1 => true, 0 => false, _ => false});},            
+        BinaryMut::Byte(byte) => {*byte = Some(read_bytes(file.try_clone().ok()?, 1)?[0] as i8);},
+        BinaryMut::UByte(ubyte) => {*ubyte = Some(read_bytes(file.try_clone().ok()?, 1)?[0]);},
+        BinaryMut::Short(short) => {*short = Some(i16::from_bytes(read_bytes(file.try_clone().ok()?, 2)?));},
+        BinaryMut::Integer(integer) => {*integer = Some(i32::from_bytes(read_bytes(file.try_clone().ok()?, 4)?));},
+        BinaryMut::String(string) => {*string = read_string(file.try_clone().ok()?);}
     } return Some(())
 }
 
-fn read_nbs_part(file: File, part: Vec<(Binary, u8)>) -> Option<()> {
+fn read_nbs_part(file: File, part: Vec<(BinaryMut, u8)>) -> Option<()> {
     for (binary, version) in part {
         read_binary(file.try_clone().ok()?, binary);
     }
