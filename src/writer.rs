@@ -11,12 +11,12 @@ macro_rules! impl_writable_bin {
                     return Some(())
                 }
 
-                fn write_default(mut file: File) -> Self {
+                fn write_default(mut file: File) -> Option<Self> {
                     let default_val = 0 as $ int;
 
-                    default_val.write_bin(file);
+                    default_val.write_bin(file)?;
 
-                    return default_val
+                    return Some(default_val)
                 }
             }
         )*
@@ -25,7 +25,7 @@ macro_rules! impl_writable_bin {
 
 trait writable_bin {
     fn write_bin(&self, file: File) -> Option<()>;
-    fn write_default(file: File) -> Self;
+    fn write_default(file: File) -> Option<Self> where Self: Sized;
 }
 
 impl_writable_bin!([u8, i8, i16, i32,]);
@@ -39,17 +39,18 @@ impl writable_bin for String {
         return Some(())
     }
 
-    fn write_default(mut file: File) -> Self {
+    fn write_default(mut file: File) -> Option<Self> {
         let default_val = String::new();
 
-        default_val.write_bin(file);
+        default_val.write_bin(file)?;
 
-        return default_val
+        return Some(default_val)
     }
 }
 
-fn write_field<T: writable_bin>(field: Option<T>) -> Option<()> {
-    
+fn write_field<T: writable_bin>(file: File, field: Option<T>) -> Option<()> {
+    if let Some(val) = field {val.write_bin(file)?;}
+    else {T::write_default(file)?;}
     
     return Some(())
 }
