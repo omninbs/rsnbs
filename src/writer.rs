@@ -48,20 +48,45 @@ impl writable_bin for String {
     }
 }
 
-fn write_field<T: writable_bin>(file: File, field: Option<T>) -> Option<()> {
+impl writable_bin for bool {
+    fn write_bin(&self, mut file: File) -> Option<()> {
+        file.write_all(&(match self {&false => 0u8, &true => 1u8}).to_le_bytes()).ok()?; return Some(())
+    }
+
+    fn write_default(mut file: File) -> Option<Self> {
+        let default_val = false;
+
+        default_val.write_bin(file)?;
+
+        return Some(default_val)
+    }
+}
+
+fn write_field<T: writable_bin>(file: File, field: &Option<T>) -> Option<()> {
     if let Some(val) = field {val.write_bin(file)?;}
     else {T::write_default(file)?;}
     
     return Some(())
 }
 
-fn write_part(part: Vec<(Binary, u8)>) { todo!()
+fn write_part(mut file: File, part: Vec<(Binary, u8)>) -> Option<()> {
+    for (binary, version) in part {
+        match binary {
+            Binary::Bool(val) => write_field(file.try_clone().ok()?, val),
+            Binary::Byte(val) => write_field(file.try_clone().ok()?, val),
+            Binary::UByte(val) => write_field(file.try_clone().ok()?, val),
+            Binary::Short(val) => write_field(file.try_clone().ok()?, val),
+            Binary::Integer(val) => write_field(file.try_clone().ok()?, val),
+            Binary::String(val) => write_field(file.try_clone().ok()?, val),
+        };
+    }
+
+    return Some(())
 }
 
 impl Song {
-    fn save(&self, file: &str, version: u8) -> Option<()> {
-        
-        
+    pub fn save(&self, file: &str, version: u8) -> Option<()> {
+        let mut file = match File::open(file) {Ok(file) => file, Err(_err) => {File::create(file); File::open(file).ok()?}};
 
         return Some(())
     }
