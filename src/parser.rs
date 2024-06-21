@@ -21,8 +21,6 @@ impl from_bytes<i32> for i32 {fn from_bytes(bytes: Vec<u8>) -> i32 {return unsaf
 fn read_string(mut file: File) -> Option<String> {
     let len = i32::from_bytes(read_bytes(file.try_clone().ok()?, 4)?);
     
-    println!("{}", len);
-
     let mut string: Vec<u8> = vec!();
 
     for _ in 0..len {string.push(read_bytes(file.try_clone().ok()?, 1)?[0]);}
@@ -55,8 +53,6 @@ pub fn read_nbs(filepath: &str) -> Option<Song> {
 
     read_nbs_part(file.try_clone().ok()?, song.header.as_mut_vec()); 
     
-    println!("{}", song.header.version?);
-
     let mut note = Note::default();
     let mut i = 0i8;
     let mut layer = -1;
@@ -84,7 +80,6 @@ pub fn read_nbs(filepath: &str) -> Option<Song> {
        
         if i == 6 {
             i = 1;
-            println!("{:?}", note);
             song.notes.push(note);
             note = Note::default();
         }

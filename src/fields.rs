@@ -21,7 +21,7 @@ pub enum Binary<'b> {
 macro_rules! create_iterable_struct {
     ($struct_name:ident, [$(($field:ident: $type:ty: $enum:expr): $version:expr),*]) => {
         // Define the struct
-        #[derive(Debug)]
+        #[derive(Debug, PartialEq)]
         pub struct $struct_name {
             $(
                 pub $field: Option<$type>,

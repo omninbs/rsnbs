@@ -1,6 +1,7 @@
 mod fields;
 use fields::{Header, Note, Layer, Instrument, Binary, BinaryMut};
 
+#[derive(Debug, PartialEq)]
 pub struct Song {
     header: Header,
 
