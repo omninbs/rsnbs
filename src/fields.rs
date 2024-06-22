@@ -92,10 +92,8 @@ create_iterable_struct!(
 create_iterable_struct!(
     Note,
     [   
-        (next_tick: i16: Short): 0,
-        (next_layer: i16: Short): 0,
-        (tick: i16: Short): 127,
-        (layer: i16: Short): 127,
+        (tick: i32: Integer): 127,
+        (layer: i32: Integer): 127,
         (instrument: i8: Byte): 0,
         (key: i8: Byte): 0,
         (velocity: i8: Byte): 4,

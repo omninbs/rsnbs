@@ -55,20 +55,20 @@ pub fn read_nbs(filepath: &str) -> Option<Song> {
     
     let mut note = Note::default();
     let mut i = 0i8;
-    let mut layer = -1;
-    let mut tick = -1;
+    let mut layer = -1i32;
+    let mut tick = -1i32;
 
     while true {
         match i {
             0 => {
-                note.next_tick = Some(i16::from_bytes(read_bytes(file.try_clone().ok()?, 2)?));
-                tick += note.next_tick?; note.tick = Some(tick);
-                if note.next_tick == Some(0) {break}
+                let tick_change = i16::from_bytes(read_bytes(file.try_clone().ok()?, 2)?);
+                tick += tick_change as i32; note.tick = Some(tick);
+                if tick_change == 0 {break}
             },
             1 => {
-                note.next_layer = Some(i16::from_bytes(read_bytes(file.try_clone().ok()?, 2)?));
-                layer += note.next_layer?; note.layer = Some(layer); 
-                if note.next_layer == Some(0) {i = -1; layer = -1;}
+                let layer_change = i16::from_bytes(read_bytes(file.try_clone().ok()?, 2)?);
+                layer += layer_change as i32; note.layer = Some(layer); 
+                if layer_change == 0 {i = -1; layer = -1;} else {note.tick = Some(tick);}
             },
             2 => {note.instrument = Some(read_bytes(file.try_clone().ok()?, 1)?[0] as i8);},
             3 => {note.key = Some(read_bytes(file.try_clone().ok()?, 1)?[0] as i8);},
