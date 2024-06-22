@@ -31,19 +31,19 @@ macro_rules! create_iterable_struct {
         // Implement the iterator function for the struct
         impl $struct_name {
             paste::item! {
-                pub fn as_mut_vec(&mut self) -> Vec<(BinaryMut, u8)> {
+                pub fn as_mut_vec(&mut self, version: u8) -> Vec<(BinaryMut, u8)> {
                     vec![
                         $(
                             (BinaryMut::$enum(&mut self.$field), $version),
                         )*
-                    ]
+                    ].into_iter().filter(|x| x.1 <= version).collect()
                 }
-                pub fn as_ref_vec(&self) -> Vec<(Binary, u8)> {
+                pub fn as_ref_vec(&self, version: u8) -> Vec<(Binary, u8)> {
                     vec![
                         $(
                             (Binary::$enum(&self.$field), $version),
                         )*
-                    ]
+                    ].into_iter().filter(|x| x.1 <= version).collect()
                 }
             }
         }

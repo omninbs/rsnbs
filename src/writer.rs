@@ -92,7 +92,7 @@ impl Song {
             Err(_err) => {File::create(filename).ok()?; File::open(filename).ok()?}
         };
 
-        write_part(file.try_clone().ok()?, self.header.as_ref_vec());
+        write_part(file.try_clone().ok()?, self.header.as_ref_vec(version));
         
         let mut prev_tick = -1;
         let mut prev_layer = -1;
@@ -108,9 +108,12 @@ impl Song {
             
             write_field(file.try_clone().ok()?, &note.instrument);
             write_field(file.try_clone().ok()?, &note.key);
-            write_field(file.try_clone().ok()?, &note.velocity);
-            write_field(file.try_clone().ok()?, &note.panning);
-            write_field(file.try_clone().ok()?, &note.pitch);
+            
+            if version >= 4 {
+                write_field(file.try_clone().ok()?, &note.velocity);
+                write_field(file.try_clone().ok()?, &note.panning);
+                write_field(file.try_clone().ok()?, &note.pitch);
+            }
 
             prev_tick = note.tick?;
             prev_layer = note.layer?;
@@ -120,13 +123,13 @@ impl Song {
         write_field(file.try_clone().ok()?, &Some(0i16));
 
         for layer in &self.layers {
-            write_part(file.try_clone().ok()?, layer.as_ref_vec());
+            write_part(file.try_clone().ok()?, layer.as_ref_vec(version));
         }
         
         write_field(file.try_clone().ok()?, &Some(self.instruments.len() as u8));
 
         for instrument in &self.instruments {
-            write_part(file.try_clone().ok()?, instrument.as_ref_vec());
+            write_part(file.try_clone().ok()?, instrument.as_ref_vec(version));
         }
 
         return Some(())

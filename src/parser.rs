@@ -1,6 +1,6 @@
 use super::{Song, BinaryMut, Layer, Header, Note, Instrument};
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Seek, SeekFrom};
 
 fn read_bytes(mut file: File, byte_count: u8) -> Option<Vec<u8>> {
     let mut bytes: Vec<u8> = vec!();
@@ -47,12 +47,21 @@ fn read_nbs_part(file: File, part: Vec<(BinaryMut, u8)>) -> Option<()> {
 }
 
 pub fn read_nbs(filepath: &str) -> Option<Song> {
-    let file = File::open(filepath).ok()?;
-
-    let mut song = Song::default();
-
-    read_nbs_part(file.try_clone().ok()?, song.header.as_mut_vec()); 
+    let mut file = File::open(filepath).ok()?;
     
+    let mut song = Song::default();
+    
+    if i16::from_bytes(read_bytes(file.try_clone().ok()?, 2)?) <= 0i16 {
+        song.header.version = Some(read_bytes(file.try_clone().ok()?, 2)?[0] as i8);
+    } else {song.header.version = Some(0i8)}
+    
+    let version = song.header.version.clone()? as u8;
+    file.seek(SeekFrom::Start(0)).ok()?;
+
+    read_nbs_part(file.try_clone().ok()?, song.header.as_mut_vec(version)); 
+    
+    if song.header.classic_length? > 0 {song.header.song_length = song.header.classic_length.clone()}
+
     let mut note = Note::default();
     let mut i = 0i8;
     let mut layer = -1i32;
@@ -71,7 +80,10 @@ pub fn read_nbs(filepath: &str) -> Option<Song> {
                 if layer_change == 0 {i = -1; layer = -1;} else {note.tick = Some(tick);}
             },
             2 => {note.instrument = Some(read_bytes(file.try_clone().ok()?, 1)?[0] as i8);},
-            3 => {note.key = Some(read_bytes(file.try_clone().ok()?, 1)?[0] as i8);},
+            3 => {
+                note.key = Some(read_bytes(file.try_clone().ok()?, 1)?[0] as i8);
+                if version < 4 {i = 6;}
+            },
             4 => {note.velocity = Some(read_bytes(file.try_clone().ok()?, 1)?[0] as i8);},
             5 => {note.panning = Some(read_bytes(file.try_clone().ok()?, 1)?[0]);},
             6 => {note.pitch = Some(i16::from_bytes(read_bytes(file.try_clone().ok()?, 2)?));},
@@ -85,12 +97,12 @@ pub fn read_nbs(filepath: &str) -> Option<Song> {
         }
         else {i += 1;}
     }
-
+    
     song.layers = vec!();
     let layers = song.header.song_layers.clone();
     for _ in 0..layers? {
         let mut layer = Layer::default();
-        read_nbs_part(file.try_clone().ok()?, layer.as_mut_vec());
+        read_nbs_part(file.try_clone().ok()?, layer.as_mut_vec(version));
         song.layers.push(layer); 
     }
     
@@ -98,7 +110,7 @@ pub fn read_nbs(filepath: &str) -> Option<Song> {
 
     for _ in 0..instruments {
         let mut instrument = Instrument::default();
-        read_nbs_part(file.try_clone().ok()?, instrument.as_mut_vec());
+        read_nbs_part(file.try_clone().ok()?, instrument.as_mut_vec(version));
         song.instruments.push(instrument);
     }
 
