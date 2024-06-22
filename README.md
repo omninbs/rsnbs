@@ -1,5 +1,10 @@
 # rsnbs
 
+[![GitHub Actions](https://github.com/omninbs/rsnbs/workflows/Rust/badge.svg)](https://github.com/omninbs/rsnbs/actions)
+[![crates.io](https://img.shields.io/crates/v/rsnbs.svg)](https://crates.io/crates/rsnbs)
+[![Rust Version](https://img.shields.io/badge/rust-1.56.0%2B-orange.svg)](https://crates.io/crates/rsnbs)
+[![Code style: rustfmt](https://img.shields.io/badge/code%20style-rustfmt-blue.svg)](https://github.com/rust-lang/rustfmt)
+
 > A simple rust library to read and write [.nbs files](https://opennbs.org/nbs)
 > from [Open Note Block Studio](https://opennbs.org/).
 
