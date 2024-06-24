@@ -6,7 +6,7 @@ mod tests {
     
     #[test]
     fn io() {
-        let file_before_writing = read_nbs(TEST_FILE_SOURCE).expect("Some reading error occured before writing");
+        let mut file_before_writing = read_nbs(TEST_FILE_SOURCE).expect("Some reading error occured before writing");
 
         file_before_writing.save(TEST_FILE_DEST, 5).expect("Some writing error ocurred");
         

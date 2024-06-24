@@ -55,10 +55,13 @@ pub fn read_nbs(filepath: &str) -> Option<Song> {
         song.header.version = Some(read_bytes(file.try_clone().ok()?, 2)?[0] as i8);
     } else {song.header.version = Some(0i8)}
     
+
     let version = song.header.version.clone()? as u8;
     file.seek(SeekFrom::Start(0)).ok()?;
 
     read_nbs_part(file.try_clone().ok()?, song.header.as_mut_vec(version)); 
+
+    song.header.version = Some(version as i8);
     
     if song.header.classic_length? > 0 {song.header.song_length = song.header.classic_length.clone()}
 

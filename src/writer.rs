@@ -86,7 +86,11 @@ fn write_part(mut file: File, part: Vec<(Binary, u8)>) -> Option<()> {
 }
 
 impl Song {
-    pub fn save(&self, filename: &str, version: u8) -> Option<()> {
+    pub fn save(&mut self, filename: &str, version: u8) -> Option<()> {
+        self.header.song_length = Some(self.notes[self.notes.len()-1].tick? as i16);
+        self.header.song_layers = Some(self.layers.len() as i16);
+        self.header.version = Some(version as i8);
+
         let mut file = match OpenOptions::new().write(true).open(filename) {
             Ok(file) => file, 
             Err(_err) => {File::create(filename).ok()?; File::open(filename).ok()?}
