@@ -88,16 +88,23 @@ fn write_part(mut file: File, part: Vec<(Binary, u8)>) -> Option<()> {
 impl Song {
     pub fn save(&mut self, filename: &str, version: u8) -> Option<()> {
         self.header.song_length = Some(self.notes[self.notes.len()-1].tick? as i16);
+        if version > 0 {self.header.classic_length = Some(0);}
+        else {self.header.classic_length = self.header.song_length.clone();}
         self.header.song_layers = Some(self.layers.len() as i16);
         self.header.version = Some(version as i8);
 
         let mut file = match OpenOptions::new().write(true).open(filename) {
             Ok(file) => file, 
-            Err(_err) => {File::create(filename).ok()?; File::open(filename).ok()?}
+            Err(_err) => {
+                File::create(filename).ok()?; 
+                OpenOptions::new().write(true).open(filename).ok()?
+            }
         };
-
+        
         write_part(file.try_clone().ok()?, self.header.as_ref_vec(version));
         
+        print!("{} version", version);
+
         let mut prev_tick = -1;
         let mut prev_layer = -1;
         
