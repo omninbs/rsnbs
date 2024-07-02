@@ -3,13 +3,13 @@ use fields::{Header, Note, Layer, Instrument, Binary, BinaryMut};
 
 #[derive(Debug, PartialEq)]
 pub struct Song {
-    header: Header,
+    pub header: Header,
 
-    notes: Vec<Note>,
+    pub notes: Vec<Note>,
     
-    layers: Vec<Layer>,
+    pub layers: Vec<Layer>,
     
-    instruments: Vec<Instrument>
+    pub instruments: Vec<Instrument>
 }
 
 pub mod parser;
