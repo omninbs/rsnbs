@@ -1,6 +1,6 @@
 [package]
 name = "rsnbs"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Joppe Stuyck <joppe@stuyck.be>"]
 edition = "2021"
 description = "IO functionality for the OpenNBS .nbs format"
