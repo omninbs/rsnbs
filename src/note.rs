@@ -8,7 +8,9 @@ use std::ops::{Deref, DerefMut};
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-/// ordered note set, guarantees position order for nbs serialization.
+/// ordered set of events, each identified by a unique anchor.
+///
+/// Keeps entries sorted by ascending anchor for deterministic iteration.
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Notes<Anchor = Position, Event = Note>(BTreeMap<Anchor, Event>);
 
@@ -65,16 +67,29 @@ impl<'a, A, E> IntoIterator for &'a Notes<A, E> {
 
 impl<A: TimeAnchor, E> Notes<A, E> {
     /// Rescales ticks from arbitrary tempo (tick/s) to standard game tick (20 t/s).
+    ///
+    /// Scaling down may drop anchor uniqueness; see
+    /// [`rescale_to_tick_rate`](Self::rescale_to_tick_rate).
     pub fn rescale_to_game_tick(self, tempo: f32) -> impl Iterator<Item = (A, E)> {
         self.rescale_to_tick_rate(tempo, 20)
     }
 
     /// Rescales ticks from arbitrary tempo (tick/s) to redstone tick (10 t/s).
+    ///
+    /// Scaling down may drop anchor uniqueness; see
+    /// [`rescale_to_tick_rate`](Self::rescale_to_tick_rate).
     pub fn rescale_to_redstone_tick(self, tempo: f32) -> impl Iterator<Item = (A, E)> {
         self.rescale_to_tick_rate(tempo, 10)
     }
 
     /// Rescales ticks from arbitrary tempo (tick/s) to the given target tick rate (t/s).
+    ///
+    /// The transform stays integral by approximating the factor to `{n, 1/n}`,
+    /// and yields a plain `(A, E)` iterator rather than a [`Notes`] map so the
+    /// caller can resolve collisions (e.g. via [`pack_layers`](Self::pack_layers)).
+    ///
+    /// Scaling down (factor < 1) may collapse several ticks onto one, so distinct
+    /// anchors are not guaranteed to stay unique.
     pub fn rescale_to_tick_rate(
         self,
         tempo: f32,
@@ -103,7 +118,7 @@ where
 {
     /// Packs a time-anchored stream into this anchor type, assigning
     /// successive layers to same-tick events so none is lost.
-    pub fn pack_layers<S, I>(notes: I) -> impl IntoIterator<Item = (A, E)>
+    pub fn pack_layers<S, I>(notes: I) -> impl Iterator<Item = (A, E)>
     where
         S: TimeAnchor,
         I: IntoIterator<Item = (S, E)>,
@@ -123,39 +138,35 @@ impl<A: LayerAnchor + Ord, E> Notes<A, E> {
     /// Groups notes into contiguous blocks separated by empty layers.
     pub fn split_by_layer_gaps(self) -> Vec<Notes<A, E>> {
         let layers: BTreeSet<Index> = self.keys().map(|pos| pos.into_layer()).collect();
-        let block_start = |prev: &mut Option<Index>, curr: Index| {
-            let keep = prev.map_or(true, |p| p + 1 != curr);
-            *prev = Some(curr);
-            Some(keep.then_some(curr))
-        };
-        let starts: Vec<Index> = layers
-            .into_iter()
-            .scan(None, block_start)
-            .flatten()
-            .collect();
+        let mut starts = Vec::new();
+        let mut prev: Option<Index> = None;
+        for layer in layers {
+            starts.extend(prev.is_none_or(|p| p + 1 != layer).then_some(layer));
+            prev = Some(layer);
+        }
 
         let mut groups: Vec<Notes<A, E>> = Vec::new();
         groups.resize_with(starts.len(), Notes::default);
         for (pos, note) in self {
-            let idx = starts.partition_point(|&s| s <= pos.into_layer()) - 1;
-            let pos = pos.with_layer(pos.into_layer() - starts[idx]);
-            groups[idx].insert(pos, note);
+            let layer = pos.into_layer();
+            let group = starts.partition_point(|&s| s <= layer) - 1;
+            groups[group].insert(pos.with_layer(layer - starts[group]), note);
         }
         groups
     }
 
     /// Splits notes into groups of `size` layers each.
     pub fn split_by_layer_count(self, size: Option<NonZero<usize>>) -> Vec<Notes<A, E>> {
-        let Some(size) = size else {
+        let Some(size) = size.map(|s| s.get() as Index) else {
             return vec![self];
         };
-        let size = size.get();
         let mut groups: BTreeMap<Index, BTreeMap<A, E>> = BTreeMap::new();
         for (pos, note) in self {
-            let group = pos.into_layer() / size as Index;
-            let new_layer = pos.into_layer() % size as Index;
-            let entry = groups.entry(group).or_default();
-            entry.insert(pos.with_layer(new_layer), note);
+            let layer = pos.into_layer();
+            groups
+                .entry(layer / size)
+                .or_default()
+                .insert(pos.with_layer(layer % size), note);
         }
         groups.into_values().map(Notes::from).collect()
     }
