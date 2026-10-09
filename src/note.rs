@@ -61,16 +61,22 @@ impl<'a, A, E> IntoIterator for &'a Notes<A, E> {
     }
 }
 
-// notes util
+// stream util
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-impl<A: TimeAnchor, E> Notes<A, E> {
+/// Adapters for note streams: applies to anything iterable over
+/// `(anchor, event)` pairs, including [`Notes`] itself.
+pub trait NoteStreamExt: Sized {
     /// Rescales ticks from arbitrary tempo (tick/s) to standard game tick (20 t/s).
     ///
     /// Scaling down may drop anchor uniqueness; see
     /// [`rescale_to_tick_rate`](Self::rescale_to_tick_rate).
-    pub fn rescale_to_game_tick(self, tempo: f32) -> impl Iterator<Item = (A, E)> {
+    fn rescale_to_game_tick<A, E>(self, tempo: f32) -> impl Iterator<Item = (A, E)>
+    where
+        Self: IntoIterator<Item = (A, E)>,
+        A: TimeAnchor,
+    {
         self.rescale_to_tick_rate(tempo, 20)
     }
 
@@ -78,7 +84,11 @@ impl<A: TimeAnchor, E> Notes<A, E> {
     ///
     /// Scaling down may drop anchor uniqueness; see
     /// [`rescale_to_tick_rate`](Self::rescale_to_tick_rate).
-    pub fn rescale_to_redstone_tick(self, tempo: f32) -> impl Iterator<Item = (A, E)> {
+    fn rescale_to_redstone_tick<A, E>(self, tempo: f32) -> impl Iterator<Item = (A, E)>
+    where
+        Self: IntoIterator<Item = (A, E)>,
+        A: TimeAnchor,
+    {
         self.rescale_to_tick_rate(tempo, 10)
     }
 
@@ -88,13 +98,17 @@ impl<A: TimeAnchor, E> Notes<A, E> {
     /// and yields a plain `(A, E)` iterator rather than a [`Notes`] map so the
     /// caller can resolve collisions (e.g. via [`pack_layers`](Self::pack_layers)).
     ///
-    /// Scaling down (factor < 1) may collapse several ticks onto one, so distinct
-    /// anchors are not guaranteed to stay unique.
-    pub fn rescale_to_tick_rate(
+    /// Scaling down (factor < 1) may collapse several ticks onto one, so anchors
+    /// are no longer guaranteed unique; an anchor-keyed collection then overwrites.
+    fn rescale_to_tick_rate<A, E>(
         self,
         tempo: f32,
         target_rate: u32,
-    ) -> impl Iterator<Item = (A, E)> {
+    ) -> impl Iterator<Item = (A, E)>
+    where
+        Self: IntoIterator<Item = (A, E)>,
+        A: TimeAnchor,
+    {
         // tempo outside (0, 30): assume NBS tick == game tick, fold by target/20
         let scale = match (0.0..30.0).contains(&tempo) {
             true => target_rate as f32 / tempo,
@@ -110,29 +124,49 @@ impl<A: TimeAnchor, E> Notes<A, E> {
             (anchor.with_tick(tick), event)
         })
     }
-}
 
-impl<A, E> Notes<A, E>
-where
-    A: TimeAnchor + LayerAnchor + Default,
-{
-    /// Packs a time-anchored stream into this anchor type, assigning
-    /// successive layers to same-tick events so none is lost.
-    pub fn pack_layers<S, I>(notes: I) -> impl Iterator<Item = (A, E)>
+    /// Packs the stream into anchor `A2`, assigning successive layers to
+    /// same-tick events so none is lost.
+    fn pack_layers<A, E, A2>(self) -> impl Iterator<Item = (A2, E)>
     where
-        S: TimeAnchor,
-        I: IntoIterator<Item = (S, E)>,
+        Self: IntoIterator<Item = (A, E)>,
+        A: TimeAnchor,
+        A2: TimeAnchor + LayerAnchor + Default,
     {
         let mut layers: BTreeMap<Tick, Index> = BTreeMap::new();
-        notes.into_iter().map(move |(anchor, event)| {
+        self.into_iter().map(move |(anchor, event)| {
             let tick = anchor.into_tick();
             let layer = layers.entry(tick).or_default();
-            let pos = A::default().with_tick(tick).with_layer(*layer);
+            let pos = A2::default().with_tick(tick).with_layer(*layer);
             *layer += 1;
             (pos, event)
         })
     }
+
+    /// Inverse of the `split_by_*` methods: recombines several note groups
+    /// into one, stacking them vertically in order so their anchors never
+    /// collide. Consumes the groups by value and yields a flat event stream.
+    fn concat<A, E>(self) -> impl Iterator<Item = (A, E)>
+    where
+        Self: IntoIterator<Item = Notes<A, E>>,
+        A: LayerAnchor,
+    {
+        let stacked = self.into_iter().scan(0, |offset, n| {
+            let base = *offset;
+            let f = move |(pos, note): (A, E)| (pos.with_layer(pos.into_layer() + base), note);
+            *offset += n.keys().map(|p| p.into_layer()).max().map_or(0, |m| m + 2);
+            Some(n.into_iter().map(f))
+        });
+        stacked.flatten()
+    }
 }
+
+/// Applies to every type; each method activates when its `Self` bounds hold.
+impl<T> NoteStreamExt for T {}
+
+// notes util
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 impl<A: LayerAnchor + Ord, E> Notes<A, E> {
     /// Groups notes into contiguous blocks separated by empty layers.
@@ -163,25 +197,10 @@ impl<A: LayerAnchor + Ord, E> Notes<A, E> {
         let mut groups: BTreeMap<Index, BTreeMap<A, E>> = BTreeMap::new();
         for (pos, note) in self {
             let layer = pos.into_layer();
-            groups
-                .entry(layer / size)
-                .or_default()
-                .insert(pos.with_layer(layer % size), note);
+            let entry = groups.entry(layer / size).or_default();
+            entry.insert(pos.with_layer(layer % size), note);
         }
         groups.into_values().map(Notes::from).collect()
-    }
-
-    /// Inverse of the `split_by_*` methods: recombines several note groups
-    /// into one, stacking them vertically in order so their anchors never
-    /// collide. Consumes the groups by value and yields a flat event stream.
-    pub fn concat<I: IntoIterator<Item = Notes<A, E>>>(notes: I) -> impl Iterator<Item = (A, E)> {
-        let stacked = notes.into_iter().scan(0, |offset, n| {
-            let base = *offset;
-            let f = move |(pos, note): (A, E)| (pos.with_layer(pos.into_layer() + base), note);
-            *offset += n.keys().map(|p| p.into_layer()).max().map_or(0, |m| m + 2);
-            Some(n.into_iter().map(f))
-        });
-        stacked.flatten()
     }
 }
 

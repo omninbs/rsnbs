@@ -1,4 +1,4 @@
-use crate::note::{Note, Notes, Tone};
+use crate::note::{Note, NoteStreamExt, Notes, Tone};
 use crate::song::Song;
 use crate::types::{LayerAnchor, Position, Tick, TimeAnchor, Version};
 use std::collections::BTreeMap;
@@ -94,7 +94,7 @@ fn analyze_tones() {
     }
     let slices: Vec<Notes> = by_tone.into_values().map(|v| Notes::from_iter(v)).collect();
 
-    song.notes = Notes::from_iter(Notes::concat(slices));
+    song.notes = Notes::from_iter(slices.concat());
     song.header.is_loop = true;
     song.save_nbs("fixtures/analyzed.nbs").unwrap();
 }
