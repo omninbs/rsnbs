@@ -171,7 +171,9 @@ impl<A: LayerAnchor + Ord, E> Notes<A, E> {
         groups.into_values().map(Notes::from).collect()
     }
 
-    /// Stacks note groups vertically with 2 blank layers between, consuming them by value.
+    /// Inverse of the `split_by_*` methods: recombines several note groups
+    /// into one, stacking them vertically in order so their anchors never
+    /// collide. Consumes the groups by value and yields a flat event stream.
     pub fn concat<I: IntoIterator<Item = Notes<A, E>>>(notes: I) -> impl Iterator<Item = (A, E)> {
         let stacked = notes.into_iter().scan(0, |offset, n| {
             let base = *offset;
