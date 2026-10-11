@@ -144,9 +144,9 @@ pub trait NoteStreamExt: Sized {
         })
     }
 
-    /// Resolves each note in the stream against the layer it sits on; see
-    /// [`Note::apply_layer`]. Notes on layers the song doesn't define resolve
-    /// against a neutral layer.
+    /// Resolves each note against the layer it sits on; see [`Note::apply_layer`].
+    /// The result reflects how the notes actually sound: disabled layers
+    /// contribute nothing, and layers the song doesn't define act as neutral.
     fn apply_layers<A, L>(self, layers: L) -> impl Iterator<Item = (A, Note)>
     where
         Self: IntoIterator<Item = (A, Note)>,
@@ -154,10 +154,10 @@ pub trait NoteStreamExt: Sized {
         L: AsRef<[Layer]>,
     {
         static FALLBACK: Layer = Layer::new();
-        self.into_iter().map(move |(anchor, note)| {
+        self.into_iter().filter_map(move |(anchor, note)| {
             let index = usize::try_from(anchor.into_layer()).unwrap_or(usize::MAX);
             let layer = layers.as_ref().get(index).unwrap_or(&FALLBACK);
-            (anchor, note.apply_layer(layer))
+            (!layer.disabled).then(|| (anchor, note.apply_layer(layer)))
         })
     }
 
