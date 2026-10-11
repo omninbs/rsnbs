@@ -11,7 +11,7 @@ pub mod note;
 // ++++++++++++============++++++++++++============++++++++++++============
 
 pub mod song {
-    use crate::note::{Note, Notes};
+    use crate::note::{Note, NoteStreamExt, Notes};
     use crate::types::{Index, Panning, Position, Result, Tick, TimeAnchor, Version, Volume};
 
     /// represents a complete nbs song with header, notes, layers, and instruments.
@@ -53,6 +53,13 @@ pub mod song {
         pub fn to_stdout(&mut self) -> Result<()> {
             let mut stdout = std::io::stdout();
             self.write(&mut stdout)
+        }
+
+        /// Resolves the song's notes against the layers they sit on, yielding
+        /// how each will actually sound.
+        pub fn resolved_notes(self) -> impl Iterator<Item = (Position, Note)> {
+            let Self { notes, layers, .. } = self;
+            notes.into_iter().apply_layers(layers)
         }
 
         /// returns the tick count (max tick + 1) of the song.
@@ -135,14 +142,21 @@ pub mod song {
         pub panning: Panning,
     }
 
-    impl Default for Layer {
-        fn default() -> Self {
+    impl Layer {
+        /// A neutral layer: unnamed, unlocked, full volume, centered panning.
+        pub const fn new() -> Self {
             Self {
                 name: String::new(),
                 lock: false,
-                volume: Volume::default(),
-                panning: Panning::default(),
+                volume: Volume::FULL,
+                panning: Panning::CENTER,
             }
+        }
+    }
+
+    impl Default for Layer {
+        fn default() -> Self {
+            Self::new()
         }
     }
 
@@ -191,13 +205,13 @@ pub mod types {
             }
         }
 
-        pub fn get(&self) -> u8 {
+        pub const fn get(&self) -> u8 {
             self.0
         }
 
         /// the amount of vanilla instruments in this NBS version.
         /// version 6 added the four trumpet instruments.
-        pub fn vanilla_instruments(self) -> u8 {
+        pub const fn vanilla_instruments(self) -> u8 {
             match self.0 {
                 0 => 10,
                 1..=5 => 16,
@@ -272,7 +286,7 @@ pub mod types {
     }
 
     impl Position {
-        pub fn new(tick: Tick, layer: Index) -> Self {
+        pub const fn new(tick: Tick, layer: Index) -> Self {
             Self { tick, layer }
         }
     }
@@ -287,11 +301,14 @@ pub mod types {
 
     impl Default for Volume {
         fn default() -> Self {
-            Self(100)
+            Self::FULL
         }
     }
 
     impl Volume {
+        /// Full volume (100).
+        pub const FULL: Self = Self(100);
+
         pub fn new(volume: u8) -> Result<Self> {
             match volume {
                 0..=100 => Ok(Self(volume)),
@@ -299,8 +316,14 @@ pub mod types {
             }
         }
 
-        pub fn get(&self) -> u8 {
+        pub const fn get(&self) -> u8 {
             self.0
+        }
+
+        /// Combines a note's volume with its layer's, as NBS playback does.
+        pub fn combine(self, other: Self) -> Self {
+            let product = u16::from(self.0) * u16::from(other.0);
+            Self(u8::try_from(product / 100).expect("volume within 0..=100"))
         }
     }
 
@@ -310,11 +333,14 @@ pub mod types {
 
     impl Default for Panning {
         fn default() -> Self {
-            Self(0)
+            Self::CENTER
         }
     }
 
     impl Panning {
+        /// Centered panning (0).
+        pub const CENTER: Self = Self(0);
+
         pub fn new(panning: i8) -> Result<Self> {
             match &panning {
                 (-100..=100) => Ok(Self(panning)),
@@ -322,8 +348,17 @@ pub mod types {
             }
         }
 
-        pub fn get(&self) -> i8 {
+        pub const fn get(&self) -> i8 {
             self.0
+        }
+
+        /// Combines a note's panning with its layer's, as NBS playback does.
+        /// A centered layer leaves the note's panning unchanged.
+        pub const fn combine(self, layer: Self) -> Self {
+            match layer.0 {
+                0 => self,
+                layer => Self(self.0.midpoint(layer)),
+            }
         }
     }
 

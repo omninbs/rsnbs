@@ -1,3 +1,4 @@
+use crate::song::Layer;
 use crate::types::{Index, LayerAnchor, Panning, Position, Tick, TimeAnchor, Volume};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Display, Formatter};
@@ -143,6 +144,23 @@ pub trait NoteStreamExt: Sized {
         })
     }
 
+    /// Resolves each note in the stream against the layer it sits on; see
+    /// [`Note::apply_layer`]. Notes on layers the song doesn't define resolve
+    /// against a neutral layer.
+    fn apply_layers<A, L>(self, layers: L) -> impl Iterator<Item = (A, Note)>
+    where
+        Self: IntoIterator<Item = (A, Note)>,
+        A: LayerAnchor,
+        L: AsRef<[Layer]>,
+    {
+        static FALLBACK: Layer = Layer::new();
+        self.into_iter().map(move |(anchor, note)| {
+            let index = usize::try_from(anchor.into_layer()).unwrap_or(usize::MAX);
+            let layer = layers.as_ref().get(index).unwrap_or(&FALLBACK);
+            (anchor, note.apply_layer(layer))
+        })
+    }
+
     /// Inverse of the `split_by_*` methods: recombines several note groups
     /// into one, stacking them vertically in order so their anchors never
     /// collide. Consumes the groups by value and yields a flat event stream.
@@ -222,6 +240,19 @@ impl Note {
     pub fn new<T: Into<Self>>(value: T) -> Self {
         value.into()
     }
+
+    /// Resolves this note against the layer it sits on, giving the note as it
+    /// actually sounds rather than the raw on-disk value.
+    ///
+    /// The result is lossy, as it has to fit back into a plain [`Note`].
+    pub fn apply_layer(&self, layer: &Layer) -> Self {
+        Self {
+            tone: self.tone,
+            velocity: self.velocity.combine(layer.volume),
+            panning: self.panning.combine(layer.panning),
+            pitch: self.pitch,
+        }
+    }
 }
 
 impl AsRef<Tone> for Note {
@@ -253,7 +284,7 @@ pub struct Tone {
 }
 
 impl Tone {
-    pub fn new(instrument: Instrument, key: Key) -> Self {
+    pub const fn new(instrument: Instrument, key: Key) -> Self {
         Self { instrument, key }
     }
 }
@@ -355,7 +386,7 @@ impl Instrument {
     ];
 
     /// The number of vanilla instruments in the newest NBS version.
-    pub(crate) fn vanilla_count() -> u8 {
+    pub(crate) const fn vanilla_count() -> u8 {
         Self::NBS_INDEX.len() as u8
     }
 
@@ -371,7 +402,7 @@ impl Instrument {
     /// Returns the canonical OpenNBS name and sound file of a vanilla
     /// instrument, used as the generic fallback when such an instrument must
     /// be stored as a custom instrument in an older NBS version.
-    pub fn nbs_definition(self) -> Option<(&'static str, &'static str)> {
+    pub const fn nbs_definition(self) -> Option<(&'static str, &'static str)> {
         use Instrument::*;
         Some(match self {
             Harp => ("Harp", "harp.ogg"),
@@ -434,7 +465,7 @@ impl Key {
         C5 = 51, CS5 = 52, D5 = 53, DS5 = 54, E5 = 55, F5 = 56, FS5 = 57,
     }
 
-    pub fn new(key: u8) -> Self {
+    pub const fn new(key: u8) -> Self {
         Self(key)
     }
 
@@ -445,8 +476,11 @@ impl Key {
     }
 
     /// converts the nbs key to the corresponding minecraft note (0-24, f#3-f#5).
-    pub fn minecraft_note(&self) -> Option<u8> {
-        self.0.checked_sub(33).filter(|&n| n <= 24)
+    pub const fn minecraft_note(&self) -> Option<u8> {
+        match self.0.checked_sub(33) {
+            Some(note) if note <= 24 => Some(note),
+            _ => None,
+        }
     }
 }
 
