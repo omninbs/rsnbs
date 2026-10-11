@@ -326,7 +326,7 @@ impl Codec for Layer {
         layer.name = reader.read_string()?;
 
         if version.get() >= 4 {
-            layer.lock = reader.read_bool()?;
+            layer.disabled = reader.read_bool()?;
         }
 
         layer.volume = Volume::parse(reader, (), hooks)?;
@@ -351,7 +351,7 @@ impl Codec for Layer {
         writer.write_string(&layer.name)?;
 
         if version.get() >= 4 {
-            writer.write_bool(layer.lock)?;
+            writer.write_bool(layer.disabled)?;
         }
 
         layer.volume.write(writer, (), hooks)?;

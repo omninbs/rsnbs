@@ -130,21 +130,21 @@ pub mod song {
     //
     // ++++++++++++============++++++++++++============++++++++++++============
 
-    /// represents a layer with volume, panning, and lock settings.
+    /// represents a layer with a name, volume, panning, and a disabled flag.
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct Layer {
         pub name: String,
-        pub lock: bool,
+        pub disabled: bool,
         pub volume: Volume,
         pub panning: Panning,
     }
 
     impl Layer {
-        /// A neutral layer: unnamed, unlocked, full volume, centered panning.
+        /// A neutral layer: unnamed, enabled, full volume, centered panning.
         pub const fn new() -> Self {
             Self {
                 name: String::new(),
-                lock: false,
+                disabled: false,
                 volume: Volume::FULL,
                 panning: Panning::CENTER,
             }
