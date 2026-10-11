@@ -222,6 +222,28 @@ impl<A: LayerAnchor + Ord, E> Notes<A, E> {
     }
 }
 
+impl<A: TimeAnchor, E> Notes<A, E> {
+    /// The number of ticks the collection spans from origin: one past the last
+    /// anchor's tick, or 0 when empty.
+    pub fn tick_count(&self) -> Tick {
+        self.keys()
+            .map(|anchor| anchor.into_tick())
+            .max()
+            .map_or(0, |tick| tick + 1)
+    }
+}
+
+impl<A: LayerAnchor, E> Notes<A, E> {
+    /// The number of layers the collection spans: one past the highest anchor
+    /// layer, or 0 when empty.
+    pub fn layer_count(&self) -> Index {
+        self.keys()
+            .map(|anchor| anchor.into_layer())
+            .max()
+            .map_or(0, |layer| layer + 1)
+    }
+}
+
 // note
 //
 // ++++++++++++============++++++++++++============++++++++++++============

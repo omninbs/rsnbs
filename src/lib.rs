@@ -12,7 +12,7 @@ pub mod note;
 
 pub mod song {
     use crate::note::{Note, NoteStreamExt, Notes};
-    use crate::types::{Index, Panning, Position, Result, Tick, TimeAnchor, Version, Volume};
+    use crate::types::{Index, Panning, Position, Result, Tick, Version, Volume};
 
     /// represents a complete nbs song with header, notes, layers, and instruments.
     #[derive(Debug, Default, Clone, PartialEq, PartialOrd)]
@@ -64,10 +64,7 @@ pub mod song {
 
         /// returns the tick count (max tick + 1) of the song.
         pub fn len(&self) -> Tick {
-            self.notes
-                .last_key_value()
-                .map(|(p, _)| p.into_tick() + 1)
-                .unwrap_or(0)
+            self.notes.tick_count()
         }
     }
 
