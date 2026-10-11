@@ -1,6 +1,6 @@
 [package]
 name = "rsnbs"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["kemiamu <kemya@tuta.io>", "Joppe Stuyck <joppe@stuyck.be>"]
 edition = "2024"
 description = "A fundamental library for working with the OpenNBS .nbs format"
