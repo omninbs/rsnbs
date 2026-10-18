@@ -292,7 +292,17 @@ pub mod types {
     //
     // ++++++++++++============++++++++++++============++++++++++++============
 
-    /// represents volume value in range 0-100
+    /// represents a linear amplitude gain in range 0-100.
+    ///
+    /// NBS stores this as a percentage, and OpenNBS applies it as a linear
+    /// amplitude multiplier: `100` is unity gain, `50` is half amplitude
+    /// (about `-6.02 dB`), and `0` is silence. It is not perceived loudness,
+    /// a dB value, or distance attenuation.
+    ///
+    /// Note and layer volumes combine by multiplication, which is equivalent
+    /// to adding their dB values. See the [NBS specification](https://opennbs.org/nbs)
+    /// and OpenNBS's [playback implementation](https://github.com/OpenNBS/NoteBlockStudio)
+    /// (`scripts/play_sound/play_sound.gml`).
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct Volume(u8);
 
@@ -318,6 +328,10 @@ pub mod types {
         }
 
         /// Combines a note's volume with its layer's, as NBS playback does.
+        ///
+        /// Both operands are linear amplitude gains in `0..=100`, so the
+        /// result is their product divided by 100. This is equivalent to
+        /// adding their dB values, not averaging or adding percentages.
         pub fn combine(self, other: Self) -> Self {
             let product = u16::from(self.0) * u16::from(other.0);
             Self(u8::try_from(product / 100).expect("volume within 0..=100"))

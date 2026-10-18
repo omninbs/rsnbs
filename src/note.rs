@@ -251,9 +251,16 @@ impl<A: LayerAnchor, E> Notes<A, E> {
 /// a single note with timing, instrument, and modulation data.
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Note {
+    /// instrument and base key of the note.
     pub tone: Tone,
+    /// linear amplitude gain in `0..=100`; see [`Volume`].
     pub velocity: Volume,
+    /// stereo position in `-100..=100`: `-100` is hard left, `0` is center,
+    /// and `100` is hard right; see [`Panning`].
     pub panning: Panning,
+    /// fine pitch offset in cents, relative to [`Tone::key`]: `0` means no
+    /// detuning, `±100` cents is one semitone, and Note Block Studio limits
+    /// the stored `i16` to `-1200..=1200`.
     pub pitch: i16,
 }
 
