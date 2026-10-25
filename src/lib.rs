@@ -1,15 +1,20 @@
 //! NBS (Note Block Studio) file format library for Rust.
 
+#![warn(missing_docs)]
+#![forbid(unsafe_code)]
+
 mod codec;
 #[cfg(test)]
 mod tests;
 
+/// notes, tones, instruments, and keys.
 pub mod note;
 
 // song
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
+/// songs: metadata, notes, layers, and custom instruments.
 pub mod song {
     use crate::note::{Note, NoteStreamExt, Notes};
     use crate::types::{Index, Panning, Position, Result, Tick, Version, Volume};
@@ -17,11 +22,16 @@ pub mod song {
     /// represents a complete nbs song with header, notes, layers, and instruments.
     #[derive(Debug, Default, Clone, PartialEq, PartialOrd)]
     pub struct Song {
+        /// song metadata read from the nbs header.
         pub header: Header,
         // Position data is stored redundantly due to incremental encoding
         // I don't know why the header's song_length is only u16 :(
+        /// every note, keyed by its tick and layer.
         pub notes: Notes<Position, Note>,
+        /// layers in index order; a note's layer index selects one of these.
         pub layers: Vec<Layer>,
+        /// custom instruments in index order, referenced by
+        /// [`Instrument::Custom`](crate::note::Instrument::Custom).
         pub custom_instruments: Vec<CustomInstrument>,
     }
 
@@ -75,26 +85,50 @@ pub mod song {
     /// contains metadata and song information from the nbs file header.
     #[derive(Debug, Clone, PartialEq, PartialOrd)]
     pub struct Header {
+        /// nbs file format version the song was written in.
         pub version: Version,
+        /// number of vanilla Minecraft instruments available in the song
+        /// (`10`, `16`, or `20`).
         pub default_instruments: u8,
+        /// song length in ticks, as stored in the header; Note Block Studio
+        /// derives it from the last note's tick when saving.
         pub song_length: Tick,
+        /// number of layers the song had when it was last saved.
         pub song_layers: Index,
+        /// title of the song.
         pub song_name: String,
+        /// author of the song.
         pub song_author: String,
+        /// author of the piece this song is based on, if any.
         pub original_author: String,
+        /// free-form description or notes about the song.
         pub description: String,
+        /// tempo in ticks per second, stored with two decimal places; Note Block
+        /// Studio defaults to `10`.
         pub tempo: f32,
+        /// whether autosave was enabled in Note Block Studio.
         pub auto_save: bool,
+        /// autosave interval in minutes.
         pub auto_save_duration: u32,
+        /// time signature numerator, i.e. beats per bar.
         pub time_signature: u8,
+        /// total minutes spent editing the song, per Note Block Studio's counter.
         pub minutes_spent: u32,
+        /// left mouse clicks made while editing.
         pub left_clicks: u32,
+        /// right mouse clicks made while editing.
         pub right_clicks: u32,
+        /// note blocks added while editing.
         pub blocks_added: u32,
+        /// note blocks removed while editing.
         pub blocks_removed: u32,
+        /// file name of the original MIDI or schematic the song comes from.
         pub song_origin: String,
+        /// whether playback should loop.
         pub is_loop: bool,
+        /// number of times to loop; `0` means loop forever.
         pub max_loop_count: u32,
+        /// tick to jump back to when looping.
         pub loop_start: Tick,
     }
 
@@ -133,9 +167,14 @@ pub mod song {
     /// represents a layer with a name, volume, panning, and a disabled flag.
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct Layer {
+        /// display name of the layer.
         pub name: String,
+        /// whether the layer is locked; locked layers are skipped during
+        /// playback.
         pub disabled: bool,
+        /// layer-wide linear amplitude gain, multiplied with each note's velocity.
         pub volume: Volume,
+        /// layer-wide stereo position, combined with each note's panning.
         pub panning: Panning,
     }
 
@@ -164,9 +203,15 @@ pub mod song {
     /// represents an instrument with sound file, pitch, and playback settings.
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct CustomInstrument {
+        /// display name of the instrument.
         pub name: String,
+        /// sound file name or path, such as `custom.ogg`.
         pub file: String,
+        /// key the sound file is tuned to, in `0..=87`; Note Block Studio
+        /// defaults to `45` (`F#4`).
         pub pitch: u8,
+        /// whether the piano preview automatically presses the matching key
+        /// while the song plays.
         pub press_key: bool,
     }
 
@@ -186,6 +231,7 @@ pub mod song {
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
+/// leaf types: versions, positions, volumes, panning, and errors.
 pub mod types {
     /// represents a valid nbs version format
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -195,6 +241,8 @@ pub mod types {
         /// The latest NBS file format version supported by this library.
         const LATEST: u8 = 6;
 
+        /// creates a version, rejecting anything newer than the latest
+        /// supported one.
         pub fn new(version: u8) -> Result<Self> {
             match version {
                 0..=Self::LATEST => Ok(Self(version)),
@@ -202,6 +250,7 @@ pub mod types {
             }
         }
 
+        /// returns the raw version number.
         pub const fn get(&self) -> u8 {
             self.0
         }
@@ -229,7 +278,9 @@ pub mod types {
 
     /// Time-axis anchor: reads and rebuilds its tick coordinate.
     pub trait TimeAnchor: Sized + Copy {
+        /// returns the tick coordinate.
         fn into_tick(self) -> Tick;
+        /// returns a copy with the tick coordinate replaced.
         fn with_tick(self, tick: Tick) -> Self;
     }
 
@@ -253,7 +304,9 @@ pub mod types {
 
     /// Layer-axis anchor: reads and rebuilds its layer coordinate.
     pub trait LayerAnchor: Sized + Copy {
+        /// returns the layer index.
         fn into_layer(self) -> Index;
+        /// returns a copy with the layer index replaced.
         fn with_layer(self, layer: Index) -> Self;
     }
 
@@ -283,6 +336,7 @@ pub mod types {
     }
 
     impl Position {
+        /// creates a position from a tick and a layer index.
         pub const fn new(tick: Tick, layer: Index) -> Self {
             Self { tick, layer }
         }
@@ -316,6 +370,7 @@ pub mod types {
         /// Full volume (100).
         pub const FULL: Self = Self(100);
 
+        /// creates a volume, rejecting values above `100`.
         pub fn new(volume: u8) -> Result<Self> {
             match volume {
                 0..=100 => Ok(Self(volume)),
@@ -323,6 +378,7 @@ pub mod types {
             }
         }
 
+        /// returns the raw gain in `0..=100`.
         pub const fn get(&self) -> u8 {
             self.0
         }
@@ -352,6 +408,7 @@ pub mod types {
         /// Centered panning (0).
         pub const CENTER: Self = Self(0);
 
+        /// creates a panning value, rejecting values outside `-100..=100`.
         pub fn new(panning: i8) -> Result<Self> {
             match &panning {
                 (-100..=100) => Ok(Self(panning)),
@@ -359,6 +416,7 @@ pub mod types {
             }
         }
 
+        /// returns the raw panning value.
         pub const fn get(&self) -> i8 {
             self.0
         }
@@ -387,15 +445,20 @@ pub mod types {
     pub enum Error {
         // #[error("Invalid key: {0}")]
         // InvalidKey(String),
+        /// the requested nbs version is not supported.
         #[error("Invalid or unsupported version: {0}")]
         InvalidVersion(String),
+        /// the panning is outside `-100..=100`.
         #[error("Invalid panning value: {0} (must be -100 to 100)")]
         InvalidPanning(String),
+        /// the volume is above `100`.
         #[error("Invalid velocity value: {0} (must be 0-100)")]
         InvalidVolume(String),
+        /// an I/O error occurred while reading or writing.
         #[error(transparent)]
         Io(#[from] std::io::Error),
     }
 
+    /// result type for fallible nbs operations.
     pub type Result<T> = std::result::Result<T, Error>;
 }

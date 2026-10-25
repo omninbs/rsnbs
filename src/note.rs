@@ -308,11 +308,14 @@ impl From<&Tone> for Note {
 /// a tone is a pair of an instrument and a key.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Tone {
+    /// instrument that produces the sound.
     pub instrument: Instrument,
+    /// musical key of the tone.
     pub key: Key,
 }
 
 impl Tone {
+    /// creates a tone from an instrument and a key.
     pub const fn new(instrument: Instrument, key: Key) -> Self {
         Self { instrument, key }
     }
@@ -337,33 +340,50 @@ impl AsRef<Tone> for Tone {
 /// built-in minecraft note block instruments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Instrument {
+    /// harp (plucked string); the default instrument.
     Harp,
+    /// double bass.
     DoubleBass,
+    /// bass drum.
     BassDrum,
+    /// snare drum.
     SnareDrum,
+    /// click (hi-hat style).
     Click,
+    /// guitar.
     Guitar,
+    /// flute.
     Flute,
+    /// bell.
     Bell,
+    /// ice chime.
     Chime,
+    /// xylophone.
     Xylophone,
+    /// iron xylophone.
     IronXylophone,
+    /// cow bell.
     CowBell,
+    /// didgeridoo.
     Didgeridoo,
+    /// bit (retro square wave).
     Bit,
+    /// banjo.
     Banjo,
+    /// pling (electric piano).
     Pling,
+    /// trumpet, added in nbs version 6.
     Trumpet,
+    /// exposed copper trumpet, added in nbs version 6.
     TrumpetExposed,
+    /// weathered copper trumpet, added in nbs version 6.
     TrumpetWeathered,
+    /// oxidized copper trumpet, added in nbs version 6.
     TrumpetOxidized,
-    // Mob head instruments. Reserved by rsnbs: not part of the NBS file
-    // format, used for schematic rendering of mob head note blocks. They
-    // are not encodable in files and fall back to Harp when saved.
+    /// mob head imitation sound: reserved by rsnbs for schematic rendering,
+    /// not part of the nbs format, and not encodable to files.
     Imitate(ImitateInstrument),
-    // Custom instruments, identified by their slot index in the song's
-    // custom instrument list (the NBS instrument byte minus the song's
-    // first custom instrument index).
+    /// custom instrument at the given slot in the song's custom instrument list.
     Custom(u8),
 }
 
@@ -371,12 +391,19 @@ pub enum Instrument {
 /// these are not NBS instruments and cannot be saved to files.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ImitateInstrument {
+    /// creeper hiss.
     Creeper,
+    /// skeleton rattle.
     Skeleton,
+    /// ender dragon growl.
     Dragon,
+    /// wither skeleton rattle.
     WitherSkeleton,
+    /// piglin grunt.
     Piglin,
+    /// zombie groan.
     Zombie,
+    /// sound of a custom player head.
     CustomHead,
 }
 
@@ -481,7 +508,10 @@ impl Default for Key {
 
 macro_rules! keys {
     ($($name:ident = $value:expr),* $(,)?) => {
-        $( pub const $name: Key = Key($value); )*
+        $(
+            #[doc = concat!("the `", stringify!($name), "` key (nbs value ", stringify!($value), ").")]
+            pub const $name: Key = Key($value);
+        )*
     };
 }
 
@@ -494,6 +524,7 @@ impl Key {
         C5 = 51, CS5 = 52, D5 = 53, DS5 = 54, E5 = 55, F5 = 56, FS5 = 57,
     }
 
+    /// creates a key from its raw nbs value (`33` is `F#3`).
     pub const fn new(key: u8) -> Self {
         Self(key)
     }
