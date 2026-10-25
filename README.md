@@ -1,9 +1,9 @@
 # rsnbs
 
-![Crates.io Version](https://img.shields.io/crates/v/rsnbs?style=flat-square&logo=rust&labelColor=363a4f&color=f5a97f)
-![Crates.io Dependents](https://img.shields.io/crates/dependents/rsnbs?style=flat-square&logo=rust&labelColor=363a4f&color=ee99a0)
-![GitHub last commit](https://img.shields.io/github/last-commit/omninbs/rsnbs?style=flat-square&logo=github&labelColor=363a4f&color=f5bde6)
-![GitHub Repo stars](https://img.shields.io/github/stars/omninbs/rsnbs?style=flat-square&logo=github&labelColor=363a4f&color=c6a0f6)
+[![Crates.io Version](https://img.shields.io/crates/v/rsnbs?style=flat-square&logo=rust&labelColor=363a4f&color=f5a97f)](https://crates.io/crates/rsnbs)
+[![Crates.io Dependents](https://img.shields.io/crates/dependents/rsnbs?style=flat-square&logo=rust&labelColor=363a4f&color=ee99a0)](https://crates.io/crates/rsnbs/reverse_dependencies)
+[![GitHub last commit](https://img.shields.io/github/last-commit/omninbs/rsnbs?style=flat-square&logo=github&labelColor=363a4f&color=f5bde6)](https://github.com/omninbs/rsnbs/activity)
+[![GitHub Repo stars](https://img.shields.io/github/stars/omninbs/rsnbs?style=flat-square&logo=github&labelColor=363a4f&color=c6a0f6)](https://github.com/omninbs/rsnbs)
 
 > A simple Rust library for working with [.nbs files](https://opennbs.org/nbs) from [Open Note Block Studio](https://opennbs.org/).
 
@@ -11,7 +11,10 @@ This library references [pynbs](https://github.com/OpenNBS/pynbs) and implements
 
 However, due to language differences, some adaptations have been made, so behavior may not always be consistent. Since this project is quite niche, it hasn't been thoroughly tested. If you encounter any issues or have feature requests, please submit an issue.
 
-_This crate is in early development with a frequently changing API. Please pin your dependency to a specific version._
+```sh
+# run the following cargo command in your project directory:
+cargo install rsnbs --version ">=0.1.7, <0.2.0"
+```
 
 ```rust
 use rsnbs::note::{Instrument, Key, Note, Tone};
