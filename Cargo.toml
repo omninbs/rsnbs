@@ -1,6 +1,6 @@
 [package]
 name = "rsnbs"
-version = "0.1.9"
+version = "0.1.11"
 authors = ["kemiamu <kemya@tuta.io>", "Joppe Stuyck <joppe@stuyck.be>"]
 edition = "2024"
 description = "A fundamental library for working with the OpenNBS .nbs format"
@@ -11,5 +11,5 @@ keywords = ["nbs", "music", "minecraft", "file-format"]
 categories = ["games"]
 
 [dependencies]
-encoding_rs = "0.8.35"
-thiserror = "2.0.18"
+encoding_rs = ">=0.8.0, <0.9.0"
+thiserror = ">=2.0.0, <3.0.0"
