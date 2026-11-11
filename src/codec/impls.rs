@@ -372,7 +372,7 @@ impl Codec for Layer {
 impl Codec for CustomInstrument {
     type Context = ();
 
-    /// parses an Instrument from a reader
+    /// parses a CustomInstrument from a reader
     fn parse<R: io::Read, M: Transformer + ?Sized>(
         reader: &mut R,
         _: Self::Context,
@@ -387,7 +387,7 @@ impl Codec for CustomInstrument {
         Ok(instrument)
     }
 
-    /// writes an Instrument to a writer
+    /// writes a CustomInstrument to a writer
     fn write<W: io::Write, M: Transformer + ?Sized>(
         &self,
         writer: &mut W,

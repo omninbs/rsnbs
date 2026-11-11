@@ -56,11 +56,6 @@ impl Song {
         let Self { notes, layers, .. } = self;
         notes.apply_layers(layers)
     }
-
-    /// returns the tick count (max tick + 1) of the song.
-    pub fn len(&self) -> Tick {
-        self.notes.tick_count()
-    }
 }
 
 // header
@@ -75,8 +70,9 @@ pub struct Header {
     /// number of vanilla Minecraft instruments available in the song
     /// (`10`, `16`, or `20`).
     pub default_instruments: u8,
-    /// song length in ticks, as stored in the header; Note Block Studio
-    /// derives it from the last note's tick when saving.
+    /// song length in ticks, as stored in the header; when saving, Note Block
+    /// Studio writes the last note's tick, one less than the event map's
+    /// [`tick_count`](crate::event::EventMap::tick_count).
     pub song_length: Tick,
     /// number of layers the song had when it was last saved.
     pub song_layers: Index,
