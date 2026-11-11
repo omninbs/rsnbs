@@ -2,7 +2,8 @@
 
 use super::nbs_ext::{NbsReadExt, NbsWriteExt};
 use super::{Codec, Transformer};
-use crate::note::{Instrument, Key, Note, Notes, Tone};
+use crate::event::EventMap;
+use crate::note::{Instrument, Key, Note, Tone};
 use crate::song::{CustomInstrument, Header, Layer, Song};
 use crate::types::{Index, LayerAnchor, Panning, Position, Result};
 use crate::types::{Tick, TimeAnchor, Version, Volume};
@@ -28,7 +29,7 @@ impl Codec for Song {
         let context = (header.version, header.default_instruments);
 
         // 音符部分
-        let notes = Notes::parse(reader, context, hooks)?;
+        let notes = EventMap::<Position, Note>::parse(reader, context, hooks)?;
 
         // 层部分
         let mut layers = Vec::new();
@@ -190,11 +191,11 @@ impl Codec for Header {
     }
 }
 
-// Notes
+// Musical Score
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-impl Codec for Notes<Position, Note> {
+impl Codec for EventMap<Position, Note> {
     type Context = (Version, u8);
 
     fn parse<R: io::Read, M: Transformer + ?Sized>(

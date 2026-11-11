@@ -1,6 +1,7 @@
 //! songs: metadata, notes, layers, and custom instruments.
 
-use crate::note::{Note, NoteStreamExt, Notes};
+use crate::event::EventMap;
+use crate::note::{Note, NoteStreamExt};
 use crate::types::{Index, Panning, Position, Result, Tick, Version, Volume};
 
 /// represents a complete nbs song with header, notes, layers, and instruments.
@@ -11,7 +12,7 @@ pub struct Song {
     // Position data is stored redundantly due to incremental encoding
     // I don't know why the header's song_length is only u16 :(
     /// every note, keyed by its tick and layer.
-    pub notes: Notes<Position, Note>,
+    pub notes: EventMap<Position, Note>,
     /// layers in index order; a note's layer index selects one of these.
     pub layers: Vec<Layer>,
     /// custom instruments in index order, referenced by

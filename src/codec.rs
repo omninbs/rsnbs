@@ -1,6 +1,7 @@
 //! NBS (Note Block Studio) file format parser and writer.
 
-use crate::note::{Instrument, Note, Notes};
+use crate::event::EventMap;
+use crate::note::{Instrument, Note};
 use crate::song::{CustomInstrument, Header, Layer, Song};
 use crate::types::{Index, Position, Result, Tick, TimeAnchor, Version};
 use std::borrow::Cow;
@@ -130,9 +131,9 @@ impl InstrumentTranslate {
     /// Folds preset entries back into vanilla instruments, compressing the rest.
     fn fold_preset_instruments(
         &self,
-        mut notes: Notes<Position, Note>,
+        mut notes: EventMap<Position, Note>,
         custom_instruments: Vec<CustomInstrument>,
-    ) -> (Notes<Position, Note>, Vec<CustomInstrument>) {
+    ) -> (EventMap<Position, Note>, Vec<CustomInstrument>) {
         let fci = self.version.unwrap().vanilla_instruments() as usize;
         let fold_entry = |(slot, custom): (usize, &CustomInstrument)| {
             Self::match_builtin(fci, custom).map(|vanilla| (slot as u8, vanilla))

@@ -1,26 +1,19 @@
 //! notes, tones, instruments, and keys.
 
-use crate::event::EventMap;
 use crate::song::Layer;
-use crate::types::{LayerAnchor, Panning, Position, Volume};
+use crate::types::{LayerAnchor, Panning, Volume};
 use std::fmt::{self, Display, Formatter};
 
-// notes collection & stream util
+// stream util
 //
 // ++++++++++++============++++++++++++============++++++++++++============
-
-/// ordered collection of note events, keyed by position by default.
-///
-/// Notes are just one kind of event; other time-aligned payloads reuse the
-/// same container.
-pub type Notes<Anchor = Position, Event = Note> = EventMap<Anchor, Event>;
 
 pub use crate::event::EventStreamExt;
 
 /// adapters for note streams.
 ///
-/// Each method applies when the receiver yields anchored notes, so [`Notes`]
-/// itself qualifies.
+/// Each method applies when the receiver yields anchored notes, so an
+/// [`EventMap`](crate::event::EventMap) of notes qualifies.
 pub trait NoteStreamExt: Sized {
     /// Resolves each note against the layer it sits on, dropping notes on
     /// disabled layers.

@@ -1,5 +1,5 @@
-use crate::event::EventStreamExt;
-use crate::note::{Note, Notes, Tone};
+use crate::event::{EventMap, EventStreamExt};
+use crate::note::{Note, Tone};
 use crate::song::Song;
 use crate::types::{LayerAnchor, Position, Tick, TimeAnchor, Version};
 use std::collections::BTreeMap;
@@ -49,7 +49,7 @@ fn test_scale_ticks() {
     const DEN: Tick = 1;
 
     // Scale each note's tick by numerator/denominator, multiply first
-    let scaled_notes: Notes = song
+    let scaled_notes: EventMap<Position, Note> = song
         .notes
         .into_iter()
         .map(|(pos, note)| {
@@ -93,9 +93,12 @@ fn analyze_tones() {
     for (pos, note) in song.notes {
         by_tone.entry(note.tone).or_default().push((pos, note));
     }
-    let slices: Vec<Notes> = by_tone.into_values().map(|v| Notes::from_iter(v)).collect();
+    let slices: Vec<EventMap<Position, Note>> = by_tone
+        .into_values()
+        .map(|v| EventMap::from_iter(v))
+        .collect();
 
-    song.notes = Notes::from_iter(slices.concat());
+    song.notes = EventMap::from_iter(slices.concat());
     song.header.is_loop = true;
     song.save_nbs("fixtures/analyzed.nbs").unwrap();
 }
