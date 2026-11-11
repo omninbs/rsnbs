@@ -3,7 +3,7 @@
 #![warn(missing_docs)]
 #![forbid(unsafe_code)]
 
-mod codec;
+mod nbs;
 #[cfg(test)]
 mod tests;
 

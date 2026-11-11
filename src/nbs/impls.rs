@@ -1,6 +1,6 @@
 //! Concrete read/write logic: song skeleton, preset folding, per-type codecs.
 
-use super::nbs_ext::{NbsReadExt, NbsWriteExt};
+use super::ext::{NbsReadExt, NbsWriteExt};
 use super::{Codec, Transformer};
 use crate::event::EventMap;
 use crate::note::{Instrument, Key, Note, Tone};

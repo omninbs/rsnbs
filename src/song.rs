@@ -32,8 +32,8 @@ impl Song {
         Self::parse(&mut file)
     }
 
-    /// parses an nbs file from standard input
-    pub fn from_stdin() -> Result<Self> {
+    /// reads and parses an nbs file from standard input
+    pub fn from_nbs_stdin() -> Result<Self> {
         let mut stdin = std::io::stdin();
         Self::parse(&mut stdin)
     }
@@ -44,8 +44,8 @@ impl Song {
         self.write(&mut file)
     }
 
-    /// writes the song to standard output
-    pub fn to_stdout(&mut self) -> Result<()> {
+    /// writes the song to standard output as an nbs file
+    pub fn to_nbs_stdout(&mut self) -> Result<()> {
         let mut stdout = std::io::stdout();
         self.write(&mut stdout)
     }

@@ -7,8 +7,8 @@ use crate::types::{Index, Position, Result, Tick, TimeAnchor, Version};
 use std::borrow::Cow;
 use std::io;
 
+mod ext;
 mod impls;
-mod nbs_ext;
 
 type CowHeader<'a> = Cow<'a, Header>;
 type CowNote<'a> = Cow<'a, Note>;
