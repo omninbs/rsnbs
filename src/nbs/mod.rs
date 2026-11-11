@@ -50,23 +50,109 @@ where
 {
     /// parses a complete Song from a reader
     pub fn parse<R: io::Read>(reader: &mut R) -> Result<Self> {
-        let mut hooks = (InstrumentTranslate::new(), HeaderStats::new());
+        let mut hooks = PresetFold;
         Codec::parse(reader, (), &mut hooks)
     }
 
     /// writes the song to a writer.
     pub fn write<W: io::Write>(&self, writer: &mut W) -> Result<()> {
-        let mut hooks = (InstrumentTranslate::new(), HeaderStats::new());
+        let mut hooks = (PresetInject::new(), HeaderStats::new());
         Codec::write(self, writer, (), &mut hooks)
     }
 }
 
-// InstrumentTranslate
+// PresetFold & PresetInject
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-/// Folds preset instruments on parse, injects them on write.
-pub(super) struct InstrumentTranslate {
+/// Reads back the preset entries [`PresetInject`] appends on write.
+pub(super) struct PresetFold;
+
+impl PresetFold {
+    /// Folds preset entries back into vanilla instruments, compressing the rest.
+    fn fold<E>(&self, song: Song<E>) -> Song<E>
+    where
+        E: From<Note> + Into<Note>,
+    {
+        let Song {
+            header,
+            notes,
+            layers,
+            custom_instruments,
+        } = song;
+        let fci = header.version.vanilla_instruments() as usize;
+        let fold_entry = |(slot, custom): (usize, &CustomInstrument)| {
+            match_preset(fci, custom).map(|vanilla| (slot as u8, vanilla))
+        };
+        let folded: Vec<(u8, Instrument)> = custom_instruments
+            .iter()
+            .enumerate()
+            .filter_map(fold_entry)
+            .collect();
+        if folded.is_empty() {
+            return Song {
+                header,
+                notes,
+                layers,
+                custom_instruments,
+            };
+        }
+
+        let keep_entry = |(slot, custom): (usize, CustomInstrument)| {
+            let keep = folded
+                .binary_search_by_key(&(slot as u8), |&(s, _)| s)
+                .is_err();
+            keep.then_some(custom)
+        };
+        let kept: Vec<CustomInstrument> = custom_instruments
+            .into_iter()
+            .enumerate()
+            .filter_map(keep_entry)
+            .collect();
+
+        // preset entries are dropped, so custom slots shift or map back
+        let fold_inst = |instrument: Instrument| {
+            let Instrument::Custom(slot) = instrument else {
+                return instrument;
+            };
+            let insert = |i: usize| Instrument::Custom(slot - i as u8);
+            match folded.binary_search_by_key(&slot, |&(s, _)| s) {
+                Ok(index) => folded[index].1,
+                Err(index) => insert(index),
+            }
+        };
+
+        let notes = notes
+            .into_iter()
+            .map(|(pos, event)| {
+                let mut note: Note = event.into();
+                note.tone.instrument = fold_inst(note.tone.instrument);
+                (pos, note.into())
+            })
+            .collect();
+
+        Song {
+            header,
+            notes,
+            layers,
+            custom_instruments: kept,
+        }
+    }
+}
+
+impl Transformer for PresetFold {
+    /// Folds preset instruments into the song.
+    fn decode_song<E>(&mut self, song: Song<E>) -> Song<E>
+    where
+        E: From<Note> + Into<Note>,
+    {
+        self.fold(song)
+    }
+}
+
+/// Appends preset entries for vanilla instruments the target version cannot
+/// index.
+pub(super) struct PresetInject {
     version: Option<Version>,
     /// Vanilla instruments needing presets, collected lazily on write.
     used: Vec<Instrument>,
@@ -76,30 +162,14 @@ pub(super) struct InstrumentTranslate {
     customs_len: usize,
 }
 
-impl InstrumentTranslate {
+impl PresetInject {
     pub(super) fn new() -> Self {
-        InstrumentTranslate {
+        PresetInject {
             version: None,
             used: Vec::new(),
             reuse: Vec::new(),
             customs_len: 0,
         }
-    }
-
-    /// The built-in instrument matching a custom entry beyond the FCI, if any.
-    fn match_builtin(fci: usize, custom: &CustomInstrument) -> Option<Instrument> {
-        Instrument::NBS_INDEX.into_iter().skip(fci).find(|inst| {
-            inst.nbs_definition() == Some((custom.name.as_str(), custom.file.as_str()))
-        })
-    }
-
-    /// (built-in, slot) for a custom entry matching a built-in, if any.
-    fn reusable_slot(
-        fci: usize,
-        slot: usize,
-        custom: &CustomInstrument,
-    ) -> Option<(Instrument, u8)> {
-        Self::match_builtin(fci, custom).map(|inst| (inst, slot as u8))
     }
 
     /// Reuses a matching custom entry, else lazily assigns a preset slot.
@@ -128,85 +198,9 @@ impl InstrumentTranslate {
             custom(name, file)
         })
     }
-
-    /// Folds preset entries back into vanilla instruments, compressing the rest.
-    fn fold_preset_instruments<E>(&self, song: Song<E>) -> Song<E>
-    where
-        E: From<Note> + Into<Note>,
-    {
-        let Song {
-            header,
-            notes,
-            layers,
-            custom_instruments,
-        } = song;
-        let fci = self.version.unwrap().vanilla_instruments() as usize;
-        let fold_entry = |(slot, custom): (usize, &CustomInstrument)| {
-            Self::match_builtin(fci, custom).map(|vanilla| (slot as u8, vanilla))
-        };
-        let folded: Vec<(u8, Instrument)> = custom_instruments
-            .iter()
-            .enumerate()
-            .filter_map(fold_entry)
-            .collect();
-        if folded.is_empty() {
-            return Song {
-                header,
-                notes,
-                layers,
-                custom_instruments,
-            };
-        }
-
-        let keep_entry = |(slot, custom): (usize, CustomInstrument)| {
-            let keep = folded
-                .binary_search_by_key(&(slot as u8), |&(s, _)| s)
-                .is_err();
-            keep.then_some(custom)
-        };
-        let kept: Vec<CustomInstrument> = custom_instruments
-            .into_iter()
-            .enumerate()
-            .filter_map(keep_entry)
-            .collect();
-
-        let notes = notes
-            .into_iter()
-            .map(|(pos, event)| {
-                let mut note: Note = event.into();
-                if let Instrument::Custom(slot) = note.tone.instrument {
-                    note.tone.instrument = folded
-                        .binary_search_by_key(&slot, |&(s, _)| s)
-                        .map(|index| folded[index].1)
-                        .unwrap_or_else(|insert| Instrument::Custom(slot - insert as u8));
-                }
-                (pos, note.into())
-            })
-            .collect();
-
-        Song {
-            header,
-            notes,
-            layers,
-            custom_instruments: kept,
-        }
-    }
 }
 
-impl Transformer for InstrumentTranslate {
-    fn decode_header(&mut self, header: Header) -> Header {
-        self.version = Some(header.version);
-        header
-    }
-
-    /// Folds preset instruments into the song.
-    fn decode_song<E>(&mut self, song: Song<E>) -> Song<E>
-    where
-        E: From<Note> + Into<Note>,
-    {
-        self.fold_preset_instruments(song)
-    }
-
+impl Transformer for PresetInject {
     /// Records the custom table length and built-in entries reusable on write.
     fn encode_song<E>(&mut self, song: &Song<E>) {
         let version = song.header.version;
@@ -214,7 +208,8 @@ impl Transformer for InstrumentTranslate {
         self.customs_len = song.custom_instruments.len();
         let fci = version.vanilla_instruments() as usize;
         let customs = song.custom_instruments.iter().enumerate();
-        let reuse = customs.filter_map(|(slot, custom)| Self::reusable_slot(fci, slot, custom));
+        let reuse =
+            customs.filter_map(|(slot, custom)| match_preset(fci, custom).map(|i| (i, slot as u8)));
         self.reuse = reuse.collect();
     }
 
@@ -237,6 +232,18 @@ impl Transformer for InstrumentTranslate {
             inst => Instrument::Custom(self.slot_for(inst)),
         }
     }
+}
+
+/// The built-in instrument a custom entry duplicates, if the version stores
+/// that instrument at or above the first custom index.
+///
+/// Shared by both directions: folding asks which entry to restore, injecting
+/// asks which slot can be reused.
+fn match_preset(fci: usize, custom: &CustomInstrument) -> Option<Instrument> {
+    Instrument::NBS_INDEX
+        .into_iter()
+        .skip(fci)
+        .find(|inst| inst.nbs_definition() == Some((custom.name.as_str(), custom.file.as_str())))
 }
 
 // HeaderStats
