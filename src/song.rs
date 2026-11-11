@@ -1,18 +1,22 @@
 //! songs: metadata, notes, layers, and custom instruments.
 
 use crate::event::EventMap;
-use crate::note::{Note, NoteStreamExt};
+use crate::note::Note;
 use crate::types::{Index, Panning, Position, Result, Tick, Version, Volume};
 
 /// represents a complete nbs song with header, notes, layers, and instruments.
+///
+/// events are stored as `E`, which defaults to [`Note`]; reading projects into
+/// `E` through [`From<Note>`](From), writing projects back through
+/// [`Into<Note>`](Into).
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd)]
-pub struct Song {
+pub struct Song<E = Note> {
     /// song metadata read from the nbs header.
     pub header: Header,
     // Position data is stored redundantly due to incremental encoding
     // I don't know why the header's song_length is only u16 :(
-    /// every note, keyed by its tick and layer.
-    pub notes: EventMap<Position, Note>,
+    /// every event, keyed by its tick and layer.
+    pub notes: EventMap<Position, E>,
     /// layers in index order; a note's layer index selects one of these.
     pub layers: Vec<Layer>,
     /// custom instruments in index order, referenced by
@@ -20,41 +24,49 @@ pub struct Song {
     pub custom_instruments: Vec<CustomInstrument>,
 }
 
-impl Song {
+impl<E> Song<E> {
     /// creates a new empty song with default values.
-    pub fn new() -> Self {
+    pub fn new() -> Self
+    where
+        E: Default,
+    {
         Self::default()
     }
 
     /// opens and parses an nbs file from a file path
-    pub fn open_nbs<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
+    pub fn open_nbs<P: AsRef<std::path::Path>>(path: P) -> Result<Self>
+    where
+        E: Clone + From<Note> + Into<Note>,
+    {
         let mut file = std::fs::File::open(path)?;
         Self::parse(&mut file)
     }
 
     /// reads and parses an nbs file from standard input
-    pub fn from_nbs_stdin() -> Result<Self> {
+    pub fn from_nbs_stdin() -> Result<Self>
+    where
+        E: Clone + From<Note> + Into<Note>,
+    {
         let mut stdin = std::io::stdin();
         Self::parse(&mut stdin)
     }
 
     /// saves the song to an nbs file at the specified path
-    pub fn save_nbs<P: AsRef<std::path::Path>>(&mut self, path: P) -> Result<()> {
+    pub fn save_nbs<P: AsRef<std::path::Path>>(&mut self, path: P) -> Result<()>
+    where
+        E: Clone + From<Note> + Into<Note>,
+    {
         let mut file = std::fs::File::create(path)?;
         self.write(&mut file)
     }
 
     /// writes the song to standard output as an nbs file
-    pub fn to_nbs_stdout(&mut self) -> Result<()> {
+    pub fn to_nbs_stdout(&mut self) -> Result<()>
+    where
+        E: Clone + From<Note> + Into<Note>,
+    {
         let mut stdout = std::io::stdout();
         self.write(&mut stdout)
-    }
-
-    /// Resolves the song's notes against the layers they sit on, yielding
-    /// how each will actually sound.
-    pub fn resolved_notes(self) -> impl Iterator<Item = (Position, Note)> {
-        let Self { notes, layers, .. } = self;
-        notes.apply_layers(layers)
     }
 }
 

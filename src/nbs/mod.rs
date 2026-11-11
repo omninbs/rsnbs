@@ -1,9 +1,8 @@
 //! NBS (Note Block Studio) file format parser and writer.
 
-use crate::event::EventMap;
 use crate::note::{Instrument, Note};
 use crate::song::{CustomInstrument, Header, Layer, Song};
-use crate::types::{Index, Position, Result, Tick, TimeAnchor, Version};
+use crate::types::{Index, Result, Tick, TimeAnchor, Version};
 use std::borrow::Cow;
 use std::io;
 
@@ -15,7 +14,6 @@ type CowNote<'a> = Cow<'a, Note>;
 type CowLayer<'a> = Cow<'a, Layer>;
 type CowCustomInsts<'a> = Cow<'a, [CustomInstrument]>;
 type CowCustomInst<'a> = Cow<'a, CustomInstrument>;
-type CowSong<'a> = Cow<'a, Song>;
 
 // Parse/Write
 //
@@ -46,7 +44,10 @@ pub(super) trait Codec: Clone {
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-impl Song {
+impl<E> Song<E>
+where
+    E: Clone + From<Note> + Into<Note>,
+{
     /// parses a complete Song from a reader
     pub fn parse<R: io::Read>(reader: &mut R) -> Result<Self> {
         let mut hooks = (InstrumentTranslate::new(), HeaderStats::new());
@@ -129,11 +130,16 @@ impl InstrumentTranslate {
     }
 
     /// Folds preset entries back into vanilla instruments, compressing the rest.
-    fn fold_preset_instruments(
-        &self,
-        mut notes: EventMap<Position, Note>,
-        custom_instruments: Vec<CustomInstrument>,
-    ) -> (EventMap<Position, Note>, Vec<CustomInstrument>) {
+    fn fold_preset_instruments<E>(&self, song: Song<E>) -> Song<E>
+    where
+        E: From<Note> + Into<Note>,
+    {
+        let Song {
+            header,
+            notes,
+            layers,
+            custom_instruments,
+        } = song;
         let fci = self.version.unwrap().vanilla_instruments() as usize;
         let fold_entry = |(slot, custom): (usize, &CustomInstrument)| {
             Self::match_builtin(fci, custom).map(|vanilla| (slot as u8, vanilla))
@@ -144,7 +150,12 @@ impl InstrumentTranslate {
             .filter_map(fold_entry)
             .collect();
         if folded.is_empty() {
-            return (notes, custom_instruments);
+            return Song {
+                header,
+                notes,
+                layers,
+                custom_instruments,
+            };
         }
 
         let keep_entry = |(slot, custom): (usize, CustomInstrument)| {
@@ -159,18 +170,26 @@ impl InstrumentTranslate {
             .filter_map(keep_entry)
             .collect();
 
-        for (_, note) in notes.iter_mut() {
-            let Instrument::Custom(slot) = note.tone.instrument else {
-                continue;
-            };
-            let instrument = folded
-                .binary_search_by_key(&slot, |&(s, _)| s)
-                .map(|index| folded[index].1)
-                .unwrap_or_else(|insert| Instrument::Custom(slot - insert as u8));
-            note.tone.instrument = instrument;
-        }
+        let notes = notes
+            .into_iter()
+            .map(|(pos, event)| {
+                let mut note: Note = event.into();
+                if let Instrument::Custom(slot) = note.tone.instrument {
+                    note.tone.instrument = folded
+                        .binary_search_by_key(&slot, |&(s, _)| s)
+                        .map(|index| folded[index].1)
+                        .unwrap_or_else(|insert| Instrument::Custom(slot - insert as u8));
+                }
+                (pos, note.into())
+            })
+            .collect();
 
-        (notes, kept)
+        Song {
+            header,
+            notes,
+            layers,
+            custom_instruments: kept,
+        }
     }
 }
 
@@ -181,14 +200,15 @@ impl Transformer for InstrumentTranslate {
     }
 
     /// Folds preset instruments into the song.
-    fn decode_song(&mut self, mut song: Song) -> Song {
-        (song.notes, song.custom_instruments) =
-            self.fold_preset_instruments(song.notes, song.custom_instruments);
-        song
+    fn decode_song<E>(&mut self, song: Song<E>) -> Song<E>
+    where
+        E: From<Note> + Into<Note>,
+    {
+        self.fold_preset_instruments(song)
     }
 
     /// Records the custom table length and built-in entries reusable on write.
-    fn encode_song<'a>(&mut self, song: CowSong<'a>) -> CowSong<'a> {
+    fn encode_song<E>(&mut self, song: &Song<E>) {
         let version = song.header.version;
         self.version = Some(version);
         self.customs_len = song.custom_instruments.len();
@@ -196,7 +216,6 @@ impl Transformer for InstrumentTranslate {
         let customs = song.custom_instruments.iter().enumerate();
         let reuse = customs.filter_map(|(slot, custom)| Self::reusable_slot(fci, slot, custom));
         self.reuse = reuse.collect();
-        song
     }
 
     /// Appends the collected presets after the custom table.
@@ -240,11 +259,10 @@ impl HeaderStats {
 }
 
 impl Transformer for HeaderStats {
-    fn encode_song<'a>(&mut self, song: CowSong<'a>) -> CowSong<'a> {
+    fn encode_song<E>(&mut self, song: &Song<E>) {
         let last = song.notes.last_key_value();
         self.song_length = Some(last.map(|(p, _)| p.into_tick()).unwrap_or(1));
         self.song_layers = Some(song.layers.len() as _);
-        song
     }
     fn encode_header<'a>(&mut self, header: CowHeader<'a>) -> CowHeader<'a> {
         let mut header = header.into_owned();
@@ -268,12 +286,18 @@ pub(super) trait Transformer {
         header
     }
 
-    fn decode_song(&mut self, song: Song) -> Song {
+    /// transforms the song produced by decoding.
+    ///
+    /// `E` must round-trip the instrument its events reference, as preset
+    /// folding rewrites it.
+    fn decode_song<E>(&mut self, song: Song<E>) -> Song<E>
+    where
+        E: From<Note> + Into<Note>,
+    {
         song
     }
-    fn encode_song<'a>(&mut self, song: CowSong<'a>) -> CowSong<'a> {
-        song
-    }
+    /// observes the song before writing; events may be of any type.
+    fn encode_song<E>(&mut self, _song: &Song<E>) {}
 
     fn decode_note(&mut self, note: Note) -> Note {
         note
@@ -326,14 +350,17 @@ impl<A: Transformer, B: Transformer> Transformer for (A, B) {
         self.1.encode_header(header)
     }
 
-    fn decode_song(&mut self, song: Song) -> Song {
+    fn decode_song<E>(&mut self, song: Song<E>) -> Song<E>
+    where
+        E: From<Note> + Into<Note>,
+    {
         let song = self.0.decode_song(song);
         self.1.decode_song(song)
     }
 
-    fn encode_song<'a>(&mut self, song: CowSong<'a>) -> CowSong<'a> {
-        let song = self.0.encode_song(song);
-        self.1.encode_song(song)
+    fn encode_song<E>(&mut self, song: &Song<E>) {
+        self.0.encode_song(song);
+        self.1.encode_song(song);
     }
 
     fn decode_custom_insts(&mut self, customs: Vec<CustomInstrument>) -> Vec<CustomInstrument> {
