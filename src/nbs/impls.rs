@@ -1,8 +1,9 @@
 //! Concrete read/write logic: song skeleton, preset folding, per-type codecs.
 
-use super::nbs_ext::{NbsReadExt, NbsWriteExt};
+use super::ext::{NbsReadExt, NbsWriteExt};
 use super::{Codec, Transformer};
-use crate::note::{Instrument, Key, Note, Notes, Tone};
+use crate::event::EventMap;
+use crate::note::{Instrument, Key, Note, Tone};
 use crate::song::{CustomInstrument, Header, Layer, Song};
 use crate::types::{Index, LayerAnchor, Panning, Position, Result};
 use crate::types::{Tick, TimeAnchor, Version, Volume};
@@ -15,7 +16,10 @@ use std::num::NonZeroU32;
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-impl Codec for Song {
+impl<E> Codec for Song<E>
+where
+    E: Clone + From<Note> + Into<Note>,
+{
     type Context = ();
 
     fn parse<R: io::Read, M: Transformer + ?Sized>(
@@ -23,20 +27,20 @@ impl Codec for Song {
         _: Self::Context,
         hooks: &mut M,
     ) -> Result<Self> {
-        // 头部分
+        // header
         let header = Header::parse(reader, (), hooks)?;
         let context = (header.version, header.default_instruments);
 
-        // 音符部分
-        let notes = Notes::parse(reader, context, hooks)?;
+        // notes
+        let notes = EventMap::<Position, E>::parse(reader, context, hooks)?;
 
-        // 层部分
+        // layers
         let mut layers = Vec::new();
         for _ in 0..header.song_layers {
             layers.push(Layer::parse(reader, header.version, hooks)?);
         }
 
-        // 自定义乐器部分
+        // custom instruments
         let instr_count = reader.read_u8()?;
         let mut custom_instruments = Vec::new();
         for _ in 0..instr_count {
@@ -44,7 +48,8 @@ impl Codec for Song {
         }
         let custom_instruments = hooks.decode_custom_insts(custom_instruments);
 
-        Ok(hooks.decode_song(Song {
+        // song
+        Ok(hooks.decode_song(Self {
             header,
             notes,
             layers,
@@ -58,25 +63,25 @@ impl Codec for Song {
         _: Self::Context,
         hooks: &mut M,
     ) -> Result<()> {
-        let song = hooks.encode_song(Cow::Borrowed(self));
-        let version = song.header.version;
+        // song
+        hooks.encode_song(self);
+        let version = self.header.version;
         let fci = version.vanilla_instruments();
         let context = (version, fci);
-        let song = song.as_ref();
 
-        // 头部分
-        song.header.write(writer, (), hooks)?;
+        // header
+        self.header.write(writer, (), hooks)?;
 
-        // 音符部分
-        song.notes.write(writer, context, hooks)?;
+        // notes
+        self.notes.write(writer, context, hooks)?;
 
-        // 层部分
-        for layer in &song.layers {
+        // layers
+        for layer in &self.layers {
             layer.write(writer, version, hooks)?;
         }
 
-        // 自定义乐器部分
-        let table = hooks.encode_custom_insts(Cow::Borrowed(song.custom_instruments.as_slice()));
+        // custom instruments
+        let table = hooks.encode_custom_insts(Cow::Borrowed(self.custom_instruments.as_slice()));
         let count = table.len().min(255) as u8;
         writer.write_u8(count)?;
         for instr in table.iter().take(count as usize) {
@@ -190,11 +195,14 @@ impl Codec for Header {
     }
 }
 
-// Notes
+// Musical Score
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-impl Codec for Notes<Position, Note> {
+impl<E> Codec for EventMap<Position, E>
+where
+    E: Clone + From<Note> + Into<Note>,
+{
     type Context = (Version, u8);
 
     fn parse<R: io::Read, M: Transformer + ?Sized>(
@@ -202,7 +210,7 @@ impl Codec for Notes<Position, Note> {
         context: Self::Context,
         hooks: &mut M,
     ) -> Result<Self> {
-        let mut notes = BTreeMap::new();
+        let mut notes: BTreeMap<Position, E> = BTreeMap::new();
 
         // tick
         let mut tick_cursor = Tick::MAX;
@@ -214,12 +222,12 @@ impl Codec for Notes<Position, Note> {
             while let Some(layer_jump) = reader.read_jump()? {
                 layer_cursor = layer_cursor.wrapping_add(layer_jump.get());
 
-                let note = Note::parse(reader, context, hooks)?;
-                notes.insert(Position::new(tick_cursor, layer_cursor), note);
+                let event = Note::parse(reader, context, hooks)?.into();
+                notes.insert(Position::new(tick_cursor, layer_cursor), event);
             }
         }
 
-        Ok(notes.into())
+        Ok(EventMap::from(notes))
     }
 
     fn write<W: io::Write, M: Transformer + ?Sized>(
@@ -232,7 +240,7 @@ impl Codec for Notes<Position, Note> {
         let mut prev_tick = Tick::MAX;
         let mut prev_layer = Index::MAX;
 
-        while let Some((pos, note)) = iter.next() {
+        while let Some((pos, event)) = iter.next() {
             // tick 上升沿
             if pos.into_tick() != prev_tick {
                 let tick_jump = pos.into_tick().wrapping_sub(prev_tick);
@@ -242,6 +250,8 @@ impl Codec for Notes<Position, Note> {
             let layer_jump = pos.into_layer().wrapping_sub(prev_layer);
             writer.write_jump(NonZeroU32::new(layer_jump))?;
 
+            // projection: E -> canonical
+            let note: Note = (*event).clone().into();
             note.write(writer, context, hooks)?;
             prev_tick = pos.into_tick();
             prev_layer = pos.into_layer();
@@ -371,7 +381,7 @@ impl Codec for Layer {
 impl Codec for CustomInstrument {
     type Context = ();
 
-    /// parses an Instrument from a reader
+    /// parses a CustomInstrument from a reader
     fn parse<R: io::Read, M: Transformer + ?Sized>(
         reader: &mut R,
         _: Self::Context,
@@ -386,7 +396,7 @@ impl Codec for CustomInstrument {
         Ok(instrument)
     }
 
-    /// writes an Instrument to a writer
+    /// writes a CustomInstrument to a writer
     fn write<W: io::Write, M: Transformer + ?Sized>(
         &self,
         writer: &mut W,

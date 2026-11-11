@@ -3,7 +3,7 @@
 //! The `build` helper writes NBS files byte-by-byte per the OpenNBS spec,
 //! so these tests are independent of the repo's gitignored fixtures.
 
-use rsnbs::note::Instrument;
+use rsnbs::note::{Instrument, Key, Tone};
 use rsnbs::song::Song;
 use rsnbs::types::{TimeAnchor, Version};
 use std::io::Cursor;
@@ -208,7 +208,7 @@ fn v5_to_v6_upgrade_remaps_custom_slots() {
 
 #[test]
 fn new_song_defaults_to_v6_with_20_vanilla_instruments() {
-    let song = Song::new();
+    let song: Song = Song::new();
     assert_eq!(song.header.version.get(), 6);
     assert_eq!(song.header.default_instruments, 20);
 }
@@ -443,4 +443,27 @@ fn fold_preserves_note_positions() {
         .map(|(p, _)| p.into_tick())
         .collect();
     assert_eq!(ticks, [0, 3, 4]);
+}
+
+#[test]
+fn song_of_tones_reads_and_writes() {
+    let bytes = build(
+        6,
+        20,
+        0,
+        1,
+        &[(Some(1), 1, 0, 45)],
+        &[("Layer", 0, 100, 100)],
+        &[],
+    );
+    let mut cursor = Cursor::new(bytes.clone());
+    let song: Song<Tone> = Song::parse(&mut cursor).unwrap();
+
+    let (_, tone) = song.notes.iter().next().unwrap();
+    assert_eq!(*tone, Tone::new(Instrument::Harp, Key::FS4));
+
+    // projecting back to notes restores the defaults the tones dropped
+    let mut out = Vec::new();
+    song.write(&mut out).unwrap();
+    assert_eq!(out, bytes);
 }

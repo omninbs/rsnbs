@@ -11,11 +11,6 @@ This library references [pynbs](https://github.com/OpenNBS/pynbs) and implements
 
 However, due to language differences, some adaptations have been made, so behavior may not always be consistent. Since this project is quite niche, it hasn't been thoroughly tested. If you encounter any issues or have feature requests, please submit an issue.
 
-```bash
-# run the following cargo command in your project directory:
-cargo install rsnbs --version ">=0.1.7, <0.2.0"
-```
-
 ```rust
 use rsnbs::note::{Instrument, Key, Note, Tone};
 use rsnbs::song::Song;
