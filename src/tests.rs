@@ -1,4 +1,5 @@
-use crate::note::{Note, NoteStreamExt, Notes, Tone};
+use crate::event::EventStreamExt;
+use crate::note::{Note, Notes, Tone};
 use crate::song::Song;
 use crate::types::{LayerAnchor, Position, Tick, TimeAnchor, Version};
 use std::collections::BTreeMap;
