@@ -4,7 +4,7 @@
 //! so these tests are independent of the repo's gitignored fixtures.
 
 use rsnbs::axiom::TimeAnchor;
-use rsnbs::format::nbs::{NbsSong as Song, Tone, Version};
+use rsnbs::format::nbs::{Song, Tone, Version};
 use rsnbs::game::minecraft::{Instrument, Key};
 use std::io::Cursor;
 

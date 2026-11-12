@@ -25,9 +25,9 @@ pub use model::*;
 /// Every event anchors to a position, whose layer selects an entry of `layers`;
 /// a tone referring to a custom sound selects an entry of `custom_instruments`.
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd)]
-pub struct NbsSong<E = Note> {
+pub struct Song<E = Note> {
     /// what the format records besides the events.
-    pub header: NbsHeader,
+    pub header: Header,
     /// every event, keyed by where it sits in the score.
     pub notes: EventMap<Position, E>,
     /// the layers events may occupy, in index order.
@@ -36,7 +36,7 @@ pub struct NbsSong<E = Note> {
     pub custom_instruments: Vec<CustomInstrument>,
 }
 
-impl<E> NbsSong<E> {
+impl<E> Song<E> {
     /// creates a new empty song with default values.
     pub fn new() -> Self
     where
@@ -58,7 +58,7 @@ impl<E> NbsSong<E> {
 /// A value the events could also determine, such as the length, is a hint and
 /// need not match them.
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct NbsHeader {
+pub struct Header {
     /// the revision the score was written in.
     pub version: Version,
     /// how many built-in sounds the score assumes.
@@ -103,7 +103,7 @@ pub struct NbsHeader {
     pub loop_start: Tick,
 }
 
-impl Default for NbsHeader {
+impl Default for Header {
     fn default() -> Self {
         Self {
             version: Version::default(),

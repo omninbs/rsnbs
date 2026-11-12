@@ -2,14 +2,14 @@
 //! points.
 
 use super::model::{CustomInstrument, Layer, Note};
-use super::{NbsHeader, NbsSong, Version};
+use super::{Header, Song, Version};
 use crate::Result;
 use crate::axiom::event::{Index, Tick, TimeAnchor};
 use crate::game::minecraft::Instrument;
 use std::borrow::Cow;
 use std::io;
 
-type CowHeader<'a> = Cow<'a, NbsHeader>;
+type CowHeader<'a> = Cow<'a, Header>;
 type CowNote<'a> = Cow<'a, Note>;
 type CowLayer<'a> = Cow<'a, Layer>;
 type CowCustomInsts<'a> = Cow<'a, [CustomInstrument]>;
@@ -47,7 +47,7 @@ pub(super) trait Codec: Clone {
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-impl<E> NbsSong<E>
+impl<E> Song<E>
 where
     E: Clone + From<Note> + Into<Note>,
 {
@@ -101,7 +101,7 @@ where
 /// passes values through the `encode_*` hooks. The default implementation
 /// returns every value unchanged, and a hook only overrides what it needs.
 pub(super) trait Transformer {
-    fn decode_header(&mut self, header: NbsHeader) -> NbsHeader {
+    fn decode_header(&mut self, header: Header) -> Header {
         header
     }
     fn encode_header<'a>(&mut self, header: CowHeader<'a>) -> CowHeader<'a> {
@@ -112,14 +112,14 @@ pub(super) trait Transformer {
     ///
     /// `E` must be able to carry an instrument across the conversion, as preset
     /// folding rewrites the instruments its events reference.
-    fn decode_song<E>(&mut self, song: NbsSong<E>) -> NbsSong<E>
+    fn decode_song<E>(&mut self, song: Song<E>) -> Song<E>
     where
         E: From<Note> + Into<Note>,
     {
         song
     }
     /// observes a score before it is written; events may be of any type.
-    fn encode_song<E>(&mut self, _song: &NbsSong<E>) {}
+    fn encode_song<E>(&mut self, _song: &Song<E>) {}
 
     fn decode_note(&mut self, note: Note) -> Note {
         note
@@ -162,7 +162,7 @@ impl Transformer for () {}
 
 /// Chains two hooks; the first runs first.
 impl<A: Transformer, B: Transformer> Transformer for (A, B) {
-    fn decode_header(&mut self, header: NbsHeader) -> NbsHeader {
+    fn decode_header(&mut self, header: Header) -> Header {
         let header = self.0.decode_header(header);
         self.1.decode_header(header)
     }
@@ -172,7 +172,7 @@ impl<A: Transformer, B: Transformer> Transformer for (A, B) {
         self.1.encode_header(header)
     }
 
-    fn decode_song<E>(&mut self, song: NbsSong<E>) -> NbsSong<E>
+    fn decode_song<E>(&mut self, song: Song<E>) -> Song<E>
     where
         E: From<Note> + Into<Note>,
     {
@@ -180,7 +180,7 @@ impl<A: Transformer, B: Transformer> Transformer for (A, B) {
         self.1.decode_song(song)
     }
 
-    fn encode_song<E>(&mut self, song: &NbsSong<E>) {
+    fn encode_song<E>(&mut self, song: &Song<E>) {
         self.0.encode_song(song);
         self.1.encode_song(song);
     }
@@ -248,7 +248,7 @@ pub(super) struct PresetFold;
 
 impl Transformer for PresetFold {
     /// Folds preset entries back into vanilla instruments, compressing the rest.
-    fn decode_song<E>(&mut self, mut song: NbsSong<E>) -> NbsSong<E>
+    fn decode_song<E>(&mut self, mut song: Song<E>) -> Song<E>
     where
         E: From<Note> + Into<Note>,
     {
@@ -314,7 +314,7 @@ impl PresetInject {
 
 impl Transformer for PresetInject {
     /// Records the version and takes over the custom table.
-    fn encode_song<E>(&mut self, song: &NbsSong<E>) {
+    fn encode_song<E>(&mut self, song: &Song<E>) {
         self.version = Some(song.header.version);
         self.customs = song.custom_instruments.clone();
     }
@@ -366,7 +366,7 @@ impl HeaderStats {
 }
 
 impl Transformer for HeaderStats {
-    fn encode_song<E>(&mut self, song: &NbsSong<E>) {
+    fn encode_song<E>(&mut self, song: &Song<E>) {
         let last = song.notes.last_key_value();
         self.song_length = Some(last.map(|(p, _)| p.into_tick()).unwrap_or(1));
         self.song_layers = Some(song.layers.len() as _);

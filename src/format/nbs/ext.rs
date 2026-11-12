@@ -4,7 +4,7 @@ use encoding_rs::WINDOWS_1252;
 use std::{io, num::NonZeroU32};
 
 /// provides methods for reading nbs format data (little-endian).
-pub(super) trait NbsReadExt: io::Read {
+pub(super) trait ReadExt: io::Read {
     /// reads a bool (stored as u8, 1 = true, 0 = false).
     fn read_bool(&mut self) -> io::Result<bool> {
         let value = self.read_u8()?;
@@ -55,10 +55,10 @@ pub(super) trait NbsReadExt: io::Read {
     }
 }
 
-impl<R: io::Read + ?Sized> NbsReadExt for R {}
+impl<R: io::Read + ?Sized> ReadExt for R {}
 
 /// provides methods for writing nbs format data (little-endian).
-pub(super) trait NbsWriteExt: io::Write {
+pub(super) trait WriteExt: io::Write {
     /// writes a bool (stored as u8, 1 = true, 0 = false).
     fn write_bool(&mut self, value: bool) -> io::Result<()> {
         self.write_u8(if value { 1 } else { 0 })
@@ -103,4 +103,4 @@ pub(super) trait NbsWriteExt: io::Write {
     }
 }
 
-impl<W: io::Write + ?Sized> NbsWriteExt for W {}
+impl<W: io::Write + ?Sized> WriteExt for W {}

@@ -1,12 +1,12 @@
 use crate::axiom::event::{EventMap, EventStreamExt, LayerAnchor, Tick, TimeAnchor};
-use crate::format::nbs::{NbsSong, Note, Position, Tone, Version};
+use crate::format::nbs::{Note, Position, Song, Tone, Version};
 use std::collections::BTreeMap;
 
 #[test]
 fn test_v6_to_v5_preset_instruments() {
     use crate::game::minecraft::Instrument;
 
-    let mut song: NbsSong = NbsSong::open_nbs("fixtures/source.nbs").unwrap();
+    let mut song: Song = Song::open_nbs("fixtures/source.nbs").unwrap();
 
     // inject a v6-only vanilla instrument (Trumpet, index 16), which v5 cannot express
     song.notes.values_mut().next().unwrap().tone.instrument = Instrument::Trumpet;
@@ -23,7 +23,7 @@ fn test_v6_to_v5_preset_instruments() {
     );
 
     // read back: v5 file, 16 vanilla instruments, same note count
-    let back: NbsSong = NbsSong::open_nbs(&path).unwrap();
+    let back: Song = Song::open_nbs(&path).unwrap();
     assert_eq!(back.header.version, Version::new(5).unwrap());
     assert_eq!(back.header.default_instruments, 16);
     assert_eq!(back.notes.len(), song.notes.len());
@@ -41,7 +41,7 @@ fn test_v6_to_v5_preset_instruments() {
 
 #[test]
 fn test_scale_ticks() {
-    let mut song: NbsSong = NbsSong::open_nbs("fixtures/source.nbs").unwrap();
+    let mut song: Song = Song::open_nbs("fixtures/source.nbs").unwrap();
 
     const NUM: Tick = 3;
     const DEN: Tick = 1;
@@ -67,7 +67,7 @@ fn test_scale_ticks() {
 
 #[test]
 fn test_v6_to_v5_conversion() {
-    let mut song_v6: NbsSong = NbsSong::open_nbs("fixtures/source.nbs").unwrap();
+    let mut song_v6: Song = Song::open_nbs("fixtures/source.nbs").unwrap();
 
     song_v6.header.version = Version::new(5).unwrap();
     song_v6.save_nbs("fixtures/out_v5.nbs").unwrap();
@@ -75,7 +75,7 @@ fn test_v6_to_v5_conversion() {
     // The downgraded file must be a valid v5 file: 16 vanilla instruments,
     // and every note must still parse (trumpets are converted to custom
     // instruments when present).
-    let back: NbsSong = NbsSong::open_nbs("fixtures/out_v5.nbs").unwrap();
+    let back: Song = Song::open_nbs("fixtures/out_v5.nbs").unwrap();
     assert_eq!(back.header.version, Version::new(5).unwrap());
     assert_eq!(back.header.default_instruments, 16);
     assert_eq!(back.notes.len(), song_v6.notes.len());
@@ -85,7 +85,7 @@ fn test_v6_to_v5_conversion() {
 
 #[test]
 fn analyze_tones() {
-    let mut song: NbsSong = NbsSong::open_nbs("fixtures/source.nbs").unwrap();
+    let mut song: Song = Song::open_nbs("fixtures/source.nbs").unwrap();
 
     let mut by_tone: BTreeMap<Tone, Vec<(Position, Note)>> = Default::default();
     for (pos, note) in song.notes {

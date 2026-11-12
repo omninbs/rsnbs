@@ -8,7 +8,7 @@
 #[test]
 fn test_readme_example() {
     use rsnbs::axiom::{Tick, TimeAnchor};
-    use rsnbs::format::nbs::{NbsSong as Song, Note, Position, Tone};
+    use rsnbs::format::nbs::{Note, Position, Song, Tone};
     use rsnbs::game::minecraft::{Instrument, Key};
 
     // example 1: iterating over a song's notes

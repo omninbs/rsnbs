@@ -31,7 +31,7 @@ pub mod format {
 
     pub mod nbs;
 
-    pub use nbs::{NbsHeader, NbsSong, Version};
+    pub use nbs::{Header, Song, Version};
 }
 
 // error

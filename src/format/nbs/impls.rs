@@ -1,9 +1,9 @@
 //! Concrete read/write logic for each type the format stores.
 
 use super::codec::{Codec, Transformer};
-use super::ext::{NbsReadExt, NbsWriteExt};
+use super::ext::{ReadExt, WriteExt};
 use super::model::{CustomInstrument, Layer, Note, Panning, Position, Tone, Volume};
-use super::{NbsHeader, NbsSong, Version};
+use super::{Header, Song, Version};
 use crate::Result;
 use crate::axiom::event::{EventMap, Index, LayerAnchor, Tick, TimeAnchor};
 use crate::game::minecraft::{Instrument, Key};
@@ -16,7 +16,7 @@ use std::num::NonZeroU32;
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-impl<E> Codec for NbsSong<E>
+impl<E> Codec for Song<E>
 where
     E: Clone + From<Note> + Into<Note>,
 {
@@ -28,7 +28,7 @@ where
         hooks: &mut M,
     ) -> Result<Self> {
         // header
-        let header = NbsHeader::parse(reader, (), hooks)?;
+        let header = Header::parse(reader, (), hooks)?;
         let context = (header.version, header.default_instruments);
 
         // notes
@@ -96,7 +96,7 @@ where
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-impl Codec for NbsHeader {
+impl Codec for Header {
     type Context = ();
 
     fn parse<R: io::Read, M: Transformer + ?Sized>(
