@@ -12,9 +12,9 @@ This library references [pynbs](https://github.com/OpenNBS/pynbs) and implements
 However, due to language differences, some adaptations have been made, so behavior may not always be consistent. Since this project is quite niche, it hasn't been thoroughly tested. If you encounter any issues or have feature requests, please submit an issue.
 
 ```rust
-use rsnbs::note::{Instrument, Key, Note, Tone};
-use rsnbs::song::Song;
-use rsnbs::types::{Position, Tick, TimeAnchor};
+use rsnbs::axiom::{Tick, TimeAnchor};
+use rsnbs::format::nbs::{NbsSong as Song, Note, Position, Tone};
+use rsnbs::game::minecraft::{Instrument, Key};
 
 // example 1: iterating over a song's notes
 let song: Song = Song::open_nbs("fixtures/source.nbs").unwrap();

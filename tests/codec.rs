@@ -3,9 +3,9 @@
 //! The `build` helper writes NBS files byte-by-byte per the OpenNBS spec,
 //! so these tests are independent of the repo's gitignored fixtures.
 
-use rsnbs::note::{Instrument, Key, Tone};
-use rsnbs::song::Song;
-use rsnbs::types::{TimeAnchor, Version};
+use rsnbs::axiom::TimeAnchor;
+use rsnbs::format::nbs::{NbsSong as Song, Tone, Version};
+use rsnbs::game::minecraft::{Instrument, Key};
 use std::io::Cursor;
 
 fn write_str(buf: &mut Vec<u8>, s: &str) {

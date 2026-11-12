@@ -1,4 +1,4 @@
-//! Provides extension traits for reading and writing NBS format data.
+//! Extension traits for reading and writing NBS format data.
 
 use encoding_rs::WINDOWS_1252;
 use std::{io, num::NonZeroU32};
@@ -44,8 +44,7 @@ pub(super) trait NbsReadExt: io::Read {
         let len = self.read_u32()?;
         let mut buf = vec![0; len as usize];
         self.read_exact(&mut buf)?;
-        // 可恶的欧洲人！
-        // Decode Windows-1252 encoded string
+        // decode a Windows-1252 encoded string
         let (decoded, _, _) = WINDOWS_1252.decode(&buf);
         Ok(decoded.into())
     }

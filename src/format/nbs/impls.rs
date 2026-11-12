@@ -1,22 +1,22 @@
-//! Concrete read/write logic: song skeleton, preset folding, per-type codecs.
+//! Concrete read/write logic for each type the format stores.
 
+use super::codec::{Codec, Transformer};
 use super::ext::{NbsReadExt, NbsWriteExt};
-use super::{Codec, Transformer};
-use crate::event::EventMap;
-use crate::note::{Instrument, Key, Note, Tone};
-use crate::song::{CustomInstrument, Header, Layer, Song};
-use crate::types::{Index, LayerAnchor, Panning, Position, Result};
-use crate::types::{Tick, TimeAnchor, Version, Volume};
+use super::model::{CustomInstrument, Layer, Note, Panning, Position, Tone, Volume};
+use super::{NbsHeader, NbsSong, Version};
+use crate::Result;
+use crate::axiom::event::{EventMap, Index, LayerAnchor, Tick, TimeAnchor};
+use crate::game::minecraft::{Instrument, Key};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::io;
 use std::num::NonZeroU32;
 
-// Song
+// song
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-impl<E> Codec for Song<E>
+impl<E> Codec for NbsSong<E>
 where
     E: Clone + From<Note> + Into<Note>,
 {
@@ -28,7 +28,7 @@ where
         hooks: &mut M,
     ) -> Result<Self> {
         // header
-        let header = Header::parse(reader, (), hooks)?;
+        let header = NbsHeader::parse(reader, (), hooks)?;
         let context = (header.version, header.default_instruments);
 
         // notes
@@ -92,7 +92,11 @@ where
     }
 }
 
-impl Codec for Header {
+// header
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+impl Codec for NbsHeader {
     type Context = ();
 
     fn parse<R: io::Read, M: Transformer + ?Sized>(
@@ -102,7 +106,7 @@ impl Codec for Header {
     ) -> Result<Self> {
         let mut header = Self::default();
 
-        // 版本
+        // version
         let song_length = reader.read_u16()?;
         header.version = Version::new(match song_length == 0 {
             true => reader.read_u8()?,
@@ -119,10 +123,10 @@ impl Codec for Header {
             false => song_length as _,
         };
 
-        // 头部分
+        // header
         header.song_layers = reader.read_u16()? as _;
-        header.song_name = reader.read_string()?;
-        header.song_author = reader.read_string()?;
+        header.title = reader.read_string()?;
+        header.author = reader.read_string()?;
         header.original_author = reader.read_string()?;
         header.description = reader.read_string()?;
         header.tempo = f32::parse(reader, (), hooks)?;
@@ -136,7 +140,7 @@ impl Codec for Header {
         header.blocks_removed = reader.read_u32()?;
         header.song_origin = reader.read_string()?;
 
-        // 循环部分
+        // loop
         if header.version.get() >= 4 {
             header.is_loop = reader.read_bool()?;
             header.max_loop_count = reader.read_u8()? as _;
@@ -154,7 +158,7 @@ impl Codec for Header {
     ) -> Result<()> {
         let header = hooks.encode_header(Cow::Borrowed(self));
 
-        // 版本
+        // version
         if header.version.get() > 0 {
             writer.write_u16(0)?;
             header.version.write(writer, (), hooks)?;
@@ -167,10 +171,10 @@ impl Codec for Header {
             writer.write_u16(header.song_length.try_into().unwrap_or(u16::MAX))?;
         }
 
-        // 头部分
+        // header
         writer.write_u16(header.song_layers.try_into().unwrap_or(u16::MAX))?;
-        writer.write_string(&header.song_name)?;
-        writer.write_string(&header.song_author)?;
+        writer.write_string(&header.title)?;
+        writer.write_string(&header.author)?;
         writer.write_string(&header.original_author)?;
         writer.write_string(&header.description)?;
         header.tempo.write(writer, (), hooks)?;
@@ -184,7 +188,7 @@ impl Codec for Header {
         writer.write_u32(header.blocks_removed)?;
         writer.write_string(&header.song_origin)?;
 
-        // 循环部分
+        // loop
         if header.version.get() >= 4 {
             writer.write_bool(header.is_loop)?;
             writer.write_u8(header.max_loop_count.try_into().unwrap_or(u8::MAX))?;
@@ -195,7 +199,29 @@ impl Codec for Header {
     }
 }
 
-// Musical Score
+impl Codec for Version {
+    type Context = ();
+
+    fn parse<R: io::Read, M: Transformer + ?Sized>(
+        reader: &mut R,
+        _: Self::Context,
+        _: &mut M,
+    ) -> Result<Self> {
+        let version = Version::new(reader.read_u8()?)?;
+        Ok(version)
+    }
+
+    fn write<W: io::Write, M: Transformer + ?Sized>(
+        &self,
+        writer: &mut W,
+        _: Self::Context,
+        _: &mut M,
+    ) -> Result<()> {
+        Ok(writer.write_u8(self.get())?)
+    }
+}
+
+// score
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
@@ -241,12 +267,12 @@ where
         let mut prev_layer = Index::MAX;
 
         while let Some((pos, event)) = iter.next() {
-            // tick 上升沿
+            // tick rises
             if pos.into_tick() != prev_tick {
                 let tick_jump = pos.into_tick().wrapping_sub(prev_tick);
                 writer.write_jump(NonZeroU32::new(tick_jump))?;
             }
-            // layer 上升沿
+            // layer rises
             let layer_jump = pos.into_layer().wrapping_sub(prev_layer);
             writer.write_jump(NonZeroU32::new(layer_jump))?;
 
@@ -255,21 +281,21 @@ where
             note.write(writer, context, hooks)?;
             prev_tick = pos.into_tick();
             prev_layer = pos.into_layer();
-            // layer 下降沿
+            // layer falls
             let next_tick = iter.peek().map(|(pos, _)| pos.into_tick());
             if next_tick.is_none() || next_tick.unwrap() != pos.into_tick() {
                 writer.write_jump(None)?;
                 prev_layer = Index::MAX;
             }
         }
-        // tick 下降沿
+        // tick falls
         writer.write_jump(None)?;
 
         Ok(())
     }
 }
 
-// Note
+// note
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
@@ -319,7 +345,7 @@ impl Codec for Note {
     }
 }
 
-// Layer
+// layer
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
@@ -374,7 +400,7 @@ impl Codec for Layer {
     }
 }
 
-// Custom Instrument
+// custom instrument
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
@@ -412,31 +438,9 @@ impl Codec for CustomInstrument {
     }
 }
 
-// Basic Types
+// values
 //
 // ++++++++++++============++++++++++++============++++++++++++============
-
-impl Codec for Version {
-    type Context = ();
-
-    fn parse<R: io::Read, M: Transformer + ?Sized>(
-        reader: &mut R,
-        _: Self::Context,
-        _: &mut M,
-    ) -> Result<Self> {
-        let version = Version::new(reader.read_u8()?)?;
-        Ok(version)
-    }
-
-    fn write<W: io::Write, M: Transformer + ?Sized>(
-        &self,
-        writer: &mut W,
-        _: Self::Context,
-        _: &mut M,
-    ) -> Result<()> {
-        Ok(writer.write_u8(self.get())?)
-    }
-}
 
 impl Codec for Instrument {
     /// Byte index where custom instruments start.
