@@ -16,8 +16,9 @@ pub mod axiom {
     //! that only describes a file lives in [`crate::format`].
 
     pub mod event;
+    pub mod temperament;
 
-    pub use event::{EventMap, EventStreamExt, Index, LayerAnchor, Tick, TimeAnchor};
+    pub use self::{event::*, temperament::*};
 }
 
 pub mod game {
@@ -31,7 +32,7 @@ pub mod format {
 
     pub mod nbs;
 
-    pub use nbs::{Header, Song, Version};
+    pub use self::nbs::*;
 }
 
 // error
