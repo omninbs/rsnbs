@@ -7,9 +7,9 @@
 /// Corresponds to the two code blocks in README.md.
 #[test]
 fn test_readme_example() {
-    use rsnbs::note::{Instrument, Key, Note, Tone};
-    use rsnbs::song::Song;
-    use rsnbs::types::{Position, Tick, TimeAnchor};
+    use rsnbs::axiom::{Tick, TimeAnchor};
+    use rsnbs::format::nbs::{Note, Position, Song, Tone};
+    use rsnbs::game::minecraft::{Instrument, Key};
 
     // example 1: iterating over a song's notes
     let song: Song = Song::open_nbs("fixtures/source.nbs").unwrap();
