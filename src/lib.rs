@@ -16,9 +16,10 @@ pub mod axiom {
     //! that only describes a file lives in [`crate::format`].
 
     pub mod event;
+    pub mod space;
     pub mod temperament;
 
-    pub use self::{event::*, temperament::*};
+    pub use self::{event::*, space::*, temperament::*};
 }
 
 pub mod game {
