@@ -9,9 +9,9 @@ use std::fmt::{self, Display, Formatter};
 /// A scientific representation of a pitch on an equal-tempered grid,
 /// independent of its timbre.
 ///
-/// `REFERENCE` fixes the reference pitch and `DIVISIONS` the number of equal
-/// steps in an octave; a step counts from the reference. The grid is part of
-/// the type, so pitches from different grids never mix.
+/// `REFERENCE` fixes the reference pitch in millihertz and `DIVISIONS` the
+/// number of equal steps in an octave; a step counts from the reference. The
+/// grid is part of the type, so pitches from different grids never mix.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Pitch<const REFERENCE: u32 = 440_000, const DIVISIONS: u8 = 12> {
     /// step counted from the reference pitch.
@@ -31,17 +31,16 @@ impl<const REFERENCE: u32, const DIVISIONS: u8> Pitch<REFERENCE, DIVISIONS> {
         }
     }
 
-    /// returns the frequency in millihertz, rounded to the nearest.
-    pub fn frequency_millihz(self) -> u64 {
-        let hertz = f64::from(REFERENCE) * f64::exp2(f64::from(self.step) / f64::from(DIVISIONS));
-        hertz.round() as u64
+    /// returns the frequency in hertz.
+    pub fn frequency_hz(self) -> f32 {
+        REFERENCE as f32 / 1_000.0 * f32::exp2(self.step as f32 / f32::from(DIVISIONS))
     }
 
     /// re-expresses the pitch on another grid, rounded to the nearest step.
     pub fn retune<const TARGET: u32, const N: u8>(self) -> Pitch<TARGET, N> {
-        let octaves = f64::from(self.step) / f64::from(DIVISIONS)
-            + (f64::from(REFERENCE) / f64::from(TARGET)).log2();
-        Pitch::new((octaves * f64::from(N)).round() as i32)
+        let octaves =
+            self.step as f32 / f32::from(DIVISIONS) + (REFERENCE as f32 / TARGET as f32).log2();
+        Pitch::new((octaves * f32::from(N)).round() as i32)
     }
 }
 
@@ -51,8 +50,8 @@ impl<const REFERENCE: u32> Display for Pitch<REFERENCE, 12> {
         const NAMES: [&str; 12] = [
             "A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#",
         ];
-        let hertz = f64::from(REFERENCE) * f64::exp2(f64::from(self.step) / 12.0);
-        let index = (12.0 * (hertz / 440_000.0).log2()).round() as i32;
+        let offset = (12.0 * (REFERENCE as f32 / 440_000.0).log2()).round() as i32;
+        let index = self.step + offset;
         let name = NAMES[index.rem_euclid(12) as usize];
         write!(f, "{name}{}", 4 + (index + 9).div_euclid(12))
     }
@@ -65,8 +64,8 @@ impl<const REFERENCE: u32> Display for Pitch<REFERENCE, 24> {
             "A", "A𝄲", "A#", "A#𝄲", "B", "B𝄲", "C", "C𝄲", "C#", "C#𝄲", "D", "D𝄲", "D#", "D#𝄲", "E",
             "E𝄲", "F", "F𝄲", "F#", "F#𝄲", "G", "G𝄲", "G#", "G#𝄲",
         ];
-        let hertz = f64::from(REFERENCE) * f64::exp2(f64::from(self.step) / 24.0);
-        let index = (24.0 * (hertz / 440_000.0).log2()).round() as i32;
+        let offset = (24.0 * (REFERENCE as f32 / 440_000.0).log2()).round() as i32;
+        let index = self.step + offset;
         let name = NAMES[index.rem_euclid(24) as usize];
         write!(f, "{name}{}", 4 + (index + 18).div_euclid(24))
     }

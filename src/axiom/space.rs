@@ -96,32 +96,32 @@ impl Azimuth {
 /// inaudible and `1` is full scale.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Loudness {
-    value: f32,
+    ratio: f32,
 }
 
 impl Loudness {
     /// inaudible.
-    pub const SILENT: Self = Self { value: 0.0 };
+    pub const SILENT: Self = Self { ratio: 0.0 };
     /// full scale.
-    pub const FULL: Self = Self { value: 1.0 };
+    pub const FULL: Self = Self { ratio: 1.0 };
 
     /// clamps a perceptual ratio into `[0, 1]`; non-finite input becomes
     /// [`SILENT`](Self::SILENT).
-    pub const fn new(value: f32) -> Self {
-        let value = match value.is_finite() {
-            true => value.clamp(0.0, 1.0),
+    pub const fn new(ratio: f32) -> Self {
+        let ratio = match ratio.is_finite() {
+            true => ratio.clamp(0.0, 1.0),
             false => 0.0,
         };
-        Self { value }
+        Self { ratio }
     }
 
     /// returns the perceptual ratio, within `[0, 1]`.
-    pub const fn value(self) -> f32 {
-        self.value
+    pub const fn ratio(self) -> f32 {
+        self.ratio
     }
 
     /// whether the loudness is inaudible.
     pub const fn is_silent(self) -> bool {
-        self.value == 0.0
+        self.ratio == 0.0
     }
 }
