@@ -14,7 +14,7 @@ However, due to language differences, some adaptations have been made, so behavi
 ```rust
 use rsnbs::axiom::{Tick, TimeAnchor};
 use rsnbs::format::nbs::{Note, Position, Song, Tone};
-use rsnbs::game::minecraft::{Instrument, Key};
+use rsnbs::domain::minecraft::{Instrument, Key};
 
 // example 1: iterating over a song's notes
 let song: Song = Song::open_nbs("fixtures/source.nbs").unwrap();

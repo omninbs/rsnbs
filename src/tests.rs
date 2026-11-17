@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 #[test]
 fn test_v6_to_v5_preset_instruments() {
-    use crate::game::minecraft::Instrument;
+    use crate::domain::minecraft::Instrument;
 
     let mut song: Song = Song::open_nbs("fixtures/source.nbs").unwrap();
 

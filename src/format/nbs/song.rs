@@ -1,17 +1,8 @@
-//! The NBS (Note Block Studio) file format.
-//!
-//! Turns the format's bytes into scores and back. Everything here describes this
-//! one file format, from its wire layout to the musical content it carries.
+//! The score container: what a file stores besides its events.
 
+use super::model::{CustomInstrument, Layer, Note, Position};
 use crate::axiom::event::{EventMap, Index, Tick};
 use crate::{Error, Result};
-
-mod codec;
-mod ext;
-mod impls;
-mod model;
-
-pub use model::*;
 
 // song
 //

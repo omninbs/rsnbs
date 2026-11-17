@@ -2,7 +2,7 @@
 //! levels, layers, and custom sounds.
 
 use crate::axiom::event::{Index, LayerAnchor, Tick, TimeAnchor};
-use crate::game::minecraft::{Instrument, Key};
+use crate::domain::minecraft::{Instrument, Key};
 use crate::{Error, Result};
 
 // position

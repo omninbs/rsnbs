@@ -5,7 +5,7 @@ use super::model::{CustomInstrument, Layer, Note};
 use super::{Header, Song, Version};
 use crate::Result;
 use crate::axiom::event::{Index, Tick, TimeAnchor};
-use crate::game::minecraft::Instrument;
+use crate::domain::minecraft::Instrument;
 use std::borrow::Cow;
 use std::io;
 

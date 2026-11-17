@@ -9,11 +9,11 @@ mod tests;
 pub use error::{Error, Result};
 
 pub mod axiom {
-    //! axioms: vocabulary that holds regardless of game or file format.
+    //! axioms: vocabulary that holds regardless of domain or file format.
     //!
     //! Types here describe only how events are anchored and ordered. Anything
-    //! that only makes sense for one game lives in [`crate::game`], and anything
-    //! that only describes a file lives in [`crate::format`].
+    //! that only makes sense for one domain lives in [`crate::domain`], and
+    //! anything that only describes a file lives in [`crate::format`].
 
     pub mod event;
     pub mod space;
@@ -22,8 +22,8 @@ pub mod axiom {
     pub use self::{event::*, space::*, temperament::*};
 }
 
-pub mod game {
-    //! per-game rules: instrument catalogue, key layout, and tick rates.
+pub mod domain {
+    //! per-domain rules: instrument catalogue, key layout, and tick rates.
 
     pub mod minecraft;
 }
@@ -31,9 +31,21 @@ pub mod game {
 pub mod format {
     //! file formats: wire models and the bytes they map to.
 
-    pub mod nbs;
+    pub mod nbs {
+        //! The NBS (Note Block Studio) file format.
+        //!
+        //! Turns the format's bytes into scores and back. Everything here
+        //! describes this one file format, from its wire layout to the musical
+        //! content it carries.
 
-    pub use self::nbs::*;
+        mod codec;
+        mod ext;
+        mod impls;
+        mod model;
+        mod song;
+
+        pub use self::{model::*, song::*};
+    }
 }
 
 // error

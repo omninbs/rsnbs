@@ -6,7 +6,7 @@ use super::model::{CustomInstrument, Layer, Note, Panning, Position, Tone, Volum
 use super::{Header, Song, Version};
 use crate::Result;
 use crate::axiom::event::{EventMap, Index, LayerAnchor, Tick, TimeAnchor};
-use crate::game::minecraft::{Instrument, Key};
+use crate::domain::minecraft::{Instrument, Key};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::io;

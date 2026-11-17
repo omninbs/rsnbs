@@ -4,8 +4,8 @@
 //! so these tests are independent of the repo's gitignored fixtures.
 
 use rsnbs::axiom::TimeAnchor;
+use rsnbs::domain::minecraft::{Instrument, Key};
 use rsnbs::format::nbs::{Song, Tone, Version};
-use rsnbs::game::minecraft::{Instrument, Key};
 use std::io::Cursor;
 
 fn write_str(buf: &mut Vec<u8>, s: &str) {
