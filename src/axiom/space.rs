@@ -28,9 +28,9 @@ pub trait Spatial: Copy + PartialEq {
 
 /// A psychological position: where a sound is heard and how loud.
 ///
-/// Both fields are normalized, so placements that compare equal are heard the
-/// same. Elevation, distance, and room are not carried; spaces that have them
-/// lose that detail on projection.
+/// Both fields are already in the terminal scale, so placements that compare
+/// equal are heard the same. Elevation, distance, and room are not carried;
+/// spaces that have them lose that detail on projection.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Placement {
     /// direction on the horizontal plane.
@@ -89,11 +89,12 @@ impl Azimuth {
     }
 }
 
-/// Perceived loudness relative to full scale.
+/// Perceived loudness.
 ///
-/// The value is a ratio on perception, not on signal amplitude: `0.5` sounds
-/// half as loud as `1.0`, so the meter is logarithmic in amplitude. `0` is
-/// inaudible and `1` is full scale.
+/// The ratio is on perception, not on signal amplitude: `0.5` sounds half as
+/// loud as `1.0`, so the meter is logarithmic in amplitude. `0` is inaudible
+/// and `1` is unity gain; anything above it is a legal gain that the output has
+/// to limit.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Loudness {
     ratio: f32,
@@ -102,20 +103,20 @@ pub struct Loudness {
 impl Loudness {
     /// inaudible.
     pub const SILENT: Self = Self { ratio: 0.0 };
-    /// full scale.
-    pub const FULL: Self = Self { ratio: 1.0 };
+    /// unity gain: the output matches the input.
+    pub const UNITY: Self = Self { ratio: 1.0 };
 
-    /// clamps a perceptual ratio into `[0, 1]`; non-finite input becomes
+    /// forces a perceptual ratio to be non-negative; non-finite input becomes
     /// [`SILENT`](Self::SILENT).
     pub const fn new(ratio: f32) -> Self {
         let ratio = match ratio.is_finite() {
-            true => ratio.clamp(0.0, 1.0),
+            true => ratio.max(0.0),
             false => 0.0,
         };
         Self { ratio }
     }
 
-    /// returns the perceptual ratio, within `[0, 1]`.
+    /// returns the perceptual ratio, at least `0`.
     pub const fn ratio(self) -> f32 {
         self.ratio
     }
