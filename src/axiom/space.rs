@@ -20,8 +20,10 @@ use std::f32::consts::{PI, TAU};
 pub trait Spatial: Copy + PartialEq {
     /// returns the position.
     fn placement(&self) -> Placement;
-    /// returns the channel split.
-    fn stereo(&self) -> Stereo;
+    /// returns the channel split, derived from [`placement`](Self::placement).
+    fn stereo(&self) -> Stereo {
+        self.placement().stereo()
+    }
 }
 
 // loud
@@ -36,8 +38,10 @@ pub trait Spatial: Copy + PartialEq {
 pub trait Loud: Copy + PartialEq {
     /// returns the linear gain.
     fn amplitude(&self) -> Amplitude;
-    /// returns the perceived ratio.
-    fn loudness(&self) -> Loudness;
+    /// returns the perceived ratio, derived from [`amplitude`](Self::amplitude).
+    fn loudness(&self) -> Loudness {
+        self.amplitude().loudness()
+    }
 }
 
 // panned
@@ -52,8 +56,11 @@ pub trait Loud: Copy + PartialEq {
 pub trait Panned: Copy + PartialEq {
     /// returns the direction as an angle.
     fn azimuth(&self) -> Azimuth;
-    /// returns the direction as a left-right axis.
-    fn axis(&self) -> Axis;
+    /// returns the direction as a left-right axis, derived from
+    /// [`azimuth`](Self::azimuth).
+    fn axis(&self) -> Axis {
+        self.azimuth().axis()
+    }
 }
 
 // placement
